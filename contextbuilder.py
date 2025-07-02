@@ -4,11 +4,13 @@ Convert various library documentation formats into
 clean text files optimized for ingestion by CMBAgent.
 """
 
+# USAGE : python contextbuilder.py --i <path_to_library> --o <path_to_output_folder> --f <format>
+# Note : The format can be auto-detected, sphinx, notebook, source, markdown i.e --f is not necessary if auto-detected
+
 import argparse
 import os
 import sys
 from converters import auxiliary, sphinx_converter, notebook_converter, source_parser
-
 
 def parse_args():
     """
@@ -18,7 +20,6 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description="Convert library docs (Sphinx, Markdown, Notebooks, source) to CMBAgent text format"
                                     )
-
     # Then, we add the arguments (that the user can pass to the script) namely :
     # Path to the library documentation folder or source root
     parser.add_argument(
@@ -35,18 +36,13 @@ def parse_args():
         '--format', '-f', choices=['auto', 'sphinx', 'notebook', 'source', 'markdown'], default='auto',
         help='Input documentation format to process (default: auto-detect)'
                         )
-    # Print logs
-    parser.add_argument(
-        '--logs', '-l', action='store_true',
-        help='Print detailed logs'
-                        )
     return parser.parse_args()
 
 def main():
     """
     Main function
     """
-    # Arguments
+    # Necessary Arguments
     args = parse_args()
     input_path = os.path.abspath(args.input_path)
     output_path = os.path.abspath(args.output_path)
@@ -58,28 +54,36 @@ def main():
         sys.exit(1)
     # Create output folder if it doesn't exist
     os.makedirs(output_path, exist_ok=True)
-    
-    '''# Check format (Auto-detect format if needed)
+
+    print(args)
+
+    # Check format (Auto-detect format if needed)
     doc_format = args.format
     if doc_format == 'auto':
+        #TODO: Find how to detect the format of a repository
         doc_format = auxiliary.find_format(input_path)
-        if args.logs:
-            print(f"Auto-detected format: {doc_format}")
+        print("the format is : ", doc_format)
+    else:
+        print("the format is : ", doc_format)
+
     '''
     # Decide the right converter to use
-    '''if doc_format == 'sphinx':
-        sphinx_converter.convert_sphinx_docs(input_path, output_path, logs=args.logs)
+    if doc_format == 'sphinx':
+        #TODO: Understand how to use Anthony's converter
+        #sphinx_converter.convert_sphinx_docs_to_txt(input_path, output_path)
     elif doc_format == 'notebook':
-        notebook_converter.convert_notebooks(input_path, output_path, logs=args.logs)
+        notebook_converter.convert_notebooks_to_txt(input_path, output_path)
     elif doc_format == 'markdown':
-        auxiliary.convert_markdown(input_path, output_path, logs=args.logs)
+        auxiliary.convert_markdown_to_txt(input_path, output_path)
     elif doc_format == 'source':
-        source_parser.parse_source_code(input_path, output_path, logs=args.logs)
+        source_parser.parse_source_code_to_txt(input_path, output_path)
     else:
         print(f"Error: Unsupported format '{doc_format}'", file=sys.stderr)
         sys.exit(1)
+    '''
+
     # Print success message
     print("Conversion completed successfully.")
-    '''
+    
 if __name__ == "__main__":
     main()
