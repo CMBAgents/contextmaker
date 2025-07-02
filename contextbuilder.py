@@ -5,7 +5,7 @@ clean text files optimized for ingestion by CMBAgent.
 """
 
 # USAGE : python contextbuilder.py --i <path_to_library> --o <path_to_output_folder> --f <format>
-# Note : The format can be auto-detected, sphinx, notebook, source, markdown i.e --f is not necessary if auto-detected
+# Note : The paths can be relative or absolute. The format can be auto-detected, sphinx, notebook, source, markdown i.e --f is not necessary if auto-detected
 
 import argparse
 import os
@@ -66,21 +66,22 @@ def main():
     else:
         print("the format is : ", doc_format)
 
-    '''
+    
     # Decide the right converter to use
     if doc_format == 'sphinx':
         #TODO: Understand how to use Anthony's converter
-        #sphinx_converter.convert_sphinx_docs_to_txt(input_path, output_path)
+        sphinx_converter.convert_sphinx_docs_to_txt(input_path, output_path)
     elif doc_format == 'notebook':
+        #TODO: Understand how to use Anthony's converter for jupyter notebooks
         notebook_converter.convert_notebooks_to_txt(input_path, output_path)
     elif doc_format == 'markdown':
         auxiliary.convert_markdown_to_txt(input_path, output_path)
     elif doc_format == 'source':
-        source_parser.parse_source_code_to_txt(input_path, output_path)
+        #TODO: Read all files and the readme source code
+        source_parser.source_code_to_txt(input_path, output_path)
     else:
         print(f"Error: Unsupported format '{doc_format}'", file=sys.stderr)
         sys.exit(1)
-    '''
 
     # Print success message
     print("Conversion completed successfully.")

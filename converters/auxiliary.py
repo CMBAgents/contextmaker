@@ -25,11 +25,13 @@ def has_source(lib_path):
 def has_markdown(lib_path):
     return True
 
-def convert_markdown_to_txt(file_path):
+def convert_markdown_to_txt(file_path, output_path):
     """
-    Convert a Markdown file to a txt file.
+    Convert a Markdown file to a txt file by copying its contents as-is.
     """
-    with open(file_path, 'r') as file:
-        content = file.read()
-    return content
-
+    print(f"Converting markdown from {file_path} to {output_path}")
+    with open(file_path, 'r', encoding='utf-8') as md_file:
+        content = md_file.read()
+    with open(output_path, 'w', encoding='utf-8') as txt_file:
+        txt_file.write(content)
+    return None
