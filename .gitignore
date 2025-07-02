@@ -8,6 +8,7 @@ venv/
 .venv/
 env/
 .env/
+contextmaker_env/
 
 # Distribution / packaging
 build/
