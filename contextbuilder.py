@@ -9,6 +9,7 @@ import os
 import sys
 from converters import auxiliary, sphinx_converter, notebook_converter, source_parser
 
+
 def parse_args():
     """
     Command Line Interface
@@ -17,8 +18,8 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description="Convert library docs (Sphinx, Markdown, Notebooks, source) to CMBAgent text format"
                                     )
-    # Then, we add the arguments (that the user can pass to the script) namely :
 
+    # Then, we add the arguments (that the user can pass to the script) namely :
     # Path to the library documentation folder or source root
     parser.add_argument(
         '--input_path', '-i', required=True,
@@ -62,27 +63,23 @@ def main():
     doc_format = args.format
     if doc_format == 'auto':
         doc_format = auxiliary.find_format(input_path)
-        if args.verbose:
+        if args.logs:
             print(f"Auto-detected format: {doc_format}")
     '''
-    
     # Decide the right converter to use
-    '''
-    if doc_format == 'sphinx':
-        # todo : add function to convert sphinx docs to text files
+    '''if doc_format == 'sphinx':
+        sphinx_converter.convert_sphinx_docs(input_path, output_path, logs=args.logs)
     elif doc_format == 'notebook':
-        # todo : add function to convert notebooks to text files
+        notebook_converter.convert_notebooks(input_path, output_path, logs=args.logs)
     elif doc_format == 'markdown':
-        # todo : add function to convert markdown to text files
+        auxiliary.convert_markdown(input_path, output_path, logs=args.logs)
     elif doc_format == 'source':
-        # todo : add function to parse source code to text files
+        source_parser.parse_source_code(input_path, output_path, logs=args.logs)
     else:
         print(f"Error: Unsupported format '{doc_format}'", file=sys.stderr)
         sys.exit(1)
-    '''
-    
     # Print success message
     print("Conversion completed successfully.")
-
+    '''
 if __name__ == "__main__":
     main()
