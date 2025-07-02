@@ -4,6 +4,10 @@
 [![Python](https://img.shields.io/badge/Python-3.8%2B-blue)](https://python.org)
 
 **Feature to enrich the CMBAgents:** Multi-Agent System for Science, Made by Cosmologists, Powered by [AG2](https://github.com/ag2ai/ag2).
+#
+# Acknowledgments
+
+This project uses the [CAMB](https://camb.info/) code developed by Antony Lewis and collaborators. Please see the CAMB website and documentation for more information.
 
 ---
 
