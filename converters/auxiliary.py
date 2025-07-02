@@ -8,8 +8,6 @@ def find_format(lib_path):
         return 'notebook'
     elif has_source(lib_path):
         return 'source'
-    elif has_markdown(lib_path):
-        return 'markdown'
     else:
         raise ValueError("The library is not a valid documentation library")
 
@@ -20,9 +18,6 @@ def has_notebook(lib_path):
     return True
 
 def has_source(lib_path):
-    return True
-
-def has_markdown(lib_path):
     return True
 
 def convert_markdown_to_txt(file_path, output_path):
