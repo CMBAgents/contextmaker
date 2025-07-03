@@ -1,4 +1,4 @@
-# Context_Maker (Work in Progress - Does not work yet)
+# ContextMaker (Work in Progress - Does not work yet)
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.8%2B-blue)](https://python.org)
