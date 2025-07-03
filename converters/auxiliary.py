@@ -5,6 +5,7 @@ def find_format(lib_path):
     Find the format of a library.
     """
     if has_documentation(lib_path):
+        
         return 'sphinx'
     elif has_notebook(lib_path):
         return 'notebook'

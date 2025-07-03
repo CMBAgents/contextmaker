@@ -4,6 +4,7 @@ Context_Maker : A tool to convert library documentation into a format optimized 
 - Main script for Context_Maker -
 
 Make sure to be located in the root of the project when running the script.
+The <path_to_library> should be the root of the library.
 
 USAGE : python contextbuilder.py --i <path_to_library> --o <path_to_output_folder>
 
@@ -61,7 +62,7 @@ def main():
         sphinx_converter.convert_sphinx_docs_to_txt(input_path, output_path)
     # If not, we convert it to markdown using jupytext (if it is a notebook), pdoc (if it is docstrings) or source code
     else:
-        nonsphinx_converter.create_markdown_files(input_path, output_path)
+        nonsphinx_converter.create_final_markdown(input_path, output_path)
     print("Conversion completed successfully.")
     
 if __name__ == "__main__":

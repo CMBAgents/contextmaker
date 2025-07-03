@@ -15,7 +15,11 @@ Usage:
 
 Options:
     --exclude: Comma-separated list of files to exclude (without .md extension)
+    --sphinx-source: Path to the Sphinx source directory (where conf.py and index.rst are located)
+    --conf: Path to conf.py (default: <sphinx-source>/conf.py)
+    --index: Path to index.rst (default: <sphinx-source>/index.rst)
     --output: Output file path
+
 """
 
 import argparse
@@ -41,13 +45,30 @@ def parse_args():
         type=str,
         help="Output file path",
     )
+    # Added an input path to the script to be able to use it in the contextbuilder.py script
+    parser.add_argument(
+        "--sphinx-source",
+        type=str,
+        required=True,
+        help="Path to the Sphinx source directory (where conf.py and index.rst are located)",
+    )
+    parser.add_argument(
+        "--conf",
+        type=str,
+        help="Path to conf.py (default: <sphinx-source>/conf.py)",
+    )
+    parser.add_argument(
+        "--index",
+        type=str,
+        help="Path to index.rst (default: <sphinx-source>/index.rst)",
+    )
     return parser.parse_args()
 
 
-def build_markdown_docs():
+def build_markdown_docs(sphinx_source, conf_py_path):
     """Build the documentation in Markdown format."""
     print("Building documentation in Markdown format...")
-    build_dir = "docs/_build/markdown"
+    build_dir = os.path.abspath("docs/_build/markdown")
 
     # Create build directory if it doesn't exist
     os.makedirs(build_dir, exist_ok=True)
@@ -56,7 +77,7 @@ def build_markdown_docs():
     temp_conf_dir = os.path.join(os.path.dirname(build_dir), "temp_conf")
     os.makedirs(temp_conf_dir, exist_ok=True)
     temp_conf_path = os.path.join(temp_conf_dir, "conf.py")
-    with open("docs/source/conf.py", encoding="utf-8") as f:
+    with open(conf_py_path, encoding="utf-8") as f:
         conf_content = f.read()
 
     # Disable intersphinx extension for markdown build
@@ -74,7 +95,7 @@ def build_markdown_docs():
                 "markdown",
                 "-c",
                 temp_conf_dir,
-                "docs/source",
+                sphinx_source,
                 build_dir,
             ],
             check=False,
@@ -95,7 +116,7 @@ def build_markdown_docs():
     return build_dir
 
 
-def extract_toctree_order(index_rst_path="docs/source/index.rst"):
+def extract_toctree_order(index_rst_path):
     """Extract the order of files from the index.rst toctree."""
     try:
         with open(index_rst_path, encoding="utf-8") as f:
@@ -135,7 +156,7 @@ def extract_toctree_order(index_rst_path="docs/source/index.rst"):
         return []
 
 
-def combine_markdown_files(build_dir, exclude_files, output_file):
+def combine_markdown_files(build_dir, exclude_files, output_file, index_rst_path):
     """Combine Markdown files into a single file with improved structure."""
     print(f"Combining Markdown files into {output_file}...")
 
@@ -174,7 +195,7 @@ def combine_markdown_files(build_dir, exclude_files, output_file):
             other_files.append(file_path)
 
     # Get the order from index.rst
-    ordered_docs = extract_toctree_order()
+    ordered_docs = extract_toctree_order(index_rst_path)
 
     # Create a mapping of filenames to their paths
     filename_to_path = {os.path.splitext(os.path.basename(f))[0]: f for f in other_files}
@@ -214,13 +235,14 @@ def combine_markdown_files(build_dir, exclude_files, output_file):
     # Combine files with improved structure
     with open(output_file, "w", encoding="utf-8") as outfile:
         # Add a comprehensive header
-        outfile.write("# CAMB Documentation\n\n")
+        outfile.write("# Documentation\n\n")
         outfile.write("---\n\n")
 
         # Add each file's content
         for file_path in filtered_files:
             file_name = os.path.basename(file_path)
             section_name = os.path.splitext(file_name)[0]
+            #TODO : add the link to the documentation
             link_name = "https://camb.readthedocs.io/en/latest/" + section_name + ".html"
 
             print(f"  Adding {section_name}...")
@@ -234,15 +256,15 @@ def combine_markdown_files(build_dir, exclude_files, output_file):
     return True
 
 
-def convert_CAMBdemo_to_markdown():
-    """Convert CAMBdemo.ipynb to markdown using jupytext."""
-    print("Converting CAMBdemo.ipynb to markdown...")
+def convert_notebook_to_markdown(notebook_path):
+    """Convert .ipynb to markdown using jupytext."""
+    print("Converting notebook to markdown...")
 
     # Path to the notebook
-    notebook_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "CAMBdemo.ipynb")
+    notebook_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), notebook_path)
 
     if not os.path.exists(notebook_path):
-        print(f"Error: CAMBdemo.ipynb not found at {notebook_path}")
+        print(f"Error: {notebook_path} not found at {notebook_path}")
         return None
 
     # Run jupytext to convert the notebook to markdown
@@ -254,7 +276,7 @@ def convert_CAMBdemo_to_markdown():
     )
 
     if result.returncode != 0:
-        print(f"Error converting CAMBdemo.ipynb to markdown: {result.stderr}")
+        print(f"Error converting {notebook_path} to markdown: {result.stderr}")
         return None
 
     # Path to the generated markdown file
@@ -264,7 +286,7 @@ def convert_CAMBdemo_to_markdown():
         print(f"Error: Generated markdown file not found at {md_path}")
         return None
 
-    print(f"Successfully converted CAMBdemo.ipynb to markdown: {md_path}")
+    print(f"Successfully converted {notebook_path} to markdown: {md_path}")
     return md_path
 
 
@@ -274,11 +296,16 @@ def main():
         # Get the list of files to exclude
         exclude_files = args.exclude.split(",") if args.exclude else []
 
+        # Determine conf.py and index.rst paths
+        sphinx_source = os.path.abspath(args.sphinx_source)
+        conf_py_path = os.path.abspath(args.conf) if args.conf else os.path.join(sphinx_source, "conf.py")
+        index_rst_path = os.path.abspath(args.index) if args.index else os.path.join(sphinx_source, "index.rst")
+
         # Build the documentation
-        build_dir = build_markdown_docs()
+        build_dir = build_markdown_docs(sphinx_source, conf_py_path)
 
         # Combine the files
-        if not combine_markdown_files(build_dir, exclude_files, args.output):
+        if not combine_markdown_files(build_dir, exclude_files, args.output, index_rst_path):
             print("Failed to combine markdown files. Exiting.")
             return 1
 
@@ -294,13 +321,13 @@ def main():
             print("ERROR: Generated markdown file is empty")
             return 1
 
-        # Convert CAMBdemo.ipynb to markdown and append it to the combined file
-        CAMBdemo_md = convert_CAMBdemo_to_markdown()
-        if CAMBdemo_md:
-            print(f"Appending CAMBdemo.md to {args.output}...")
+        # Convert notebook to markdown and append it to the combined file
+        notebook_md = convert_notebook_to_markdown(args.notebook)
+        if notebook_md:
+            print(f"Appending {args.notebook} to {args.output}...")
             with open(args.output, "a", encoding="utf-8") as outfile:
-                outfile.write("## Usage examples from CAMBdemo jupyter notebook\n\n")
-                with open(CAMBdemo_md, encoding="utf-8") as infile:
+                outfile.write("## Usage examples from jupyter notebook\n\n")
+                with open(notebook_md, encoding="utf-8") as infile:
                     content = infile.read()
                     outfile.write(content)
 

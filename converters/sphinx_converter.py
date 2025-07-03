@@ -2,20 +2,19 @@ from converters import auxiliary
 import subprocess
 
 #TODO: reflechir a la gestion des acces a source et les path en general
-#TODO: agir depuis le input path (s'y placer)
 
 def convert_sphinx_docs_to_txt(input_path, output_path):
     """
     Convert Sphinx documentation to markdown format.
     """
+    #TODO : add the path to source and 
     # Convert the sphinx documentation to a markdown file
-    output = "combined.md"
-
-    result = subprocess.run(
-        [
-            "python", "converters/markdown_builder.py",
-            "--output", output
-        ],
+    result = subprocess.run([
+    "python", "converters/markdown_builder.py",
+    "--sphinx-source", "/path/to/external_lib/docs/source",
+    "--output", "output.md",
+    "--notebook", "notebook.ipynb"  # or any notebook you want to include
+    ],
         capture_output=True,
         text=True
     )
