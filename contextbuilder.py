@@ -1,7 +1,9 @@
 """
 Context_Maker : A tool to convert library documentation into a format optimized for ingestion by CMBAgent.
 
-- Main script for ContextMaker -
+- Main script for Context_Maker -
+
+Make sure to be located in the root of the project when running the script.
 
 USAGE : python contextbuilder.py --i <path_to_library> --o <path_to_output_folder>
 
@@ -11,7 +13,7 @@ Note : The paths can be relative or absolute and the format can be auto-detected
 import argparse
 import os
 import sys
-from converters import sphinx_converter
+from converters import sphinx_converter, nonsphinx_converter, auxiliary
 
 def parse_args():
     """
@@ -41,21 +43,26 @@ def main():
     output_path = os.path.abspath(args.output_path)
 
     # Check paths
-    # Check input path exists
-    if not os.path.exists(input_path):
+    # Check input path exists and is not empty
+    if not os.path.exists(input_path) or not os.listdir(input_path):
         print(f"Error: Input path {input_path} does not exist.", file=sys.stderr)
         sys.exit(1)
     # Create output folder if it doesn't exist
     os.makedirs(output_path, exist_ok=True)
 
+    # Print the arguments and the format of the documentation
     print(args)
+    print(auxiliary.find_format(input_path))
     
     # Convert the documentation to a txt file
-    if sphinx_converter.convert_sphinx_docs_to_txt(input_path, output_path) is None:
-        print(f"Error: Unsupported format '{input_path}'", file=sys.stderr)
-        sys.exit(1)
+
+    # If the documentation already is in sphinx format, we convert it to markdown using the builder
+    if auxiliary.find_format(input_path) == 'sphinx':
+        sphinx_converter.convert_sphinx_docs_to_txt(input_path, output_path)
+    # If not, we convert it to markdown using jupytext (if it is a notebook), pdoc (if it is docstrings) or source code
     else:
-        print("Conversion completed successfully.")
+        nonsphinx_converter.create_markdown_files(input_path, output_path)
+    print("Conversion completed successfully.")
     
 if __name__ == "__main__":
     main()
