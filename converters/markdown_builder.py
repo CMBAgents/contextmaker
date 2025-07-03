@@ -21,6 +21,7 @@ Options:
     --output: Output file path
 
 """
+#TODO : do by default the path (just enter the name of the library)
 
 import argparse
 import glob

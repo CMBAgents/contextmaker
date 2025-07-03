@@ -57,12 +57,13 @@ def main():
     
     # Convert the documentation to a txt file
 
-    # If the documentation already is in sphinx format, we convert it to markdown using the builder
+    # If the documentation exists i.e already is in sphinx format, we convert it to markdown using the builder
     if auxiliary.find_format(input_path) == 'sphinx':
         sphinx_converter.convert_sphinx_docs_to_txt(input_path, output_path)
     # If not, we convert it to markdown using jupytext (if it is a notebook), pdoc (if it is docstrings) or source code
     else:
         nonsphinx_converter.create_final_markdown(input_path, output_path)
+    #TODO : MD to txt
     print("Conversion completed successfully.")
     
 if __name__ == "__main__":

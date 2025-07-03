@@ -1,18 +1,21 @@
 import os
+import ast
 
 def find_format(lib_path):
     """
     Find the format of a library.
     """
     if has_documentation(lib_path):
-        
+        print("The library has documentation")
         return 'sphinx'
     elif has_notebook(lib_path):
+        print("The library has a notebook")
         return 'notebook'
     elif has_docstrings(lib_path):
+        print("The library has docstrings")
         return 'docstrings'
     elif has_source(lib_path):
-        return 'source'
+       return 'source'
     else:
         raise ValueError("The library is not a valid documentation library")
 
@@ -30,20 +33,28 @@ def has_notebook(lib_path):
     """
     Check if the library has a notebook and no documentation.
     """
-    # Check if the library has a notebook folder (contains a .ipynb file)
+    # Check if the library has a notebook folder (contains a *.ipynb file)
     if not has_documentation(lib_path):
         if os.path.exists(os.path.join(lib_path, 'notebooks')):
             if os.path.exists(os.path.join(lib_path, 'notebooks', '*.ipynb')):
                 return True
     return False
 
-def has_docstrings(lib_path):
-    """
-    Check if the library has docstrings.
-    """
-    if not has_documentation(lib_path) :
-        #TODO : check if the library has docstrings
-        pass
+
+def has_docstrings(file_path):
+    with open(file_path, "r") as f:
+        source = f.read()
+    tree = ast.parse(source, filename=file_path)
+
+    # Check module-level docstring
+    if ast.get_docstring(tree):
+        return True
+
+    # Check for class and function docstrings
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            if ast.get_docstring(node):
+                return True
     return False
 
 def has_source(lib_path):
@@ -55,15 +66,14 @@ def has_source(lib_path):
             if not has_docstrings(lib_path):
                 return True
     return False
-"""
+
 def convert_markdown_to_txt(output_path):
-    
+    """
     Convert a Markdown file to a txt file by copying its contents as-is.
-    
+    """
     print(f"Converting markdown from {output_path}")
     with open(output_path, 'r', encoding='utf-8') as md_file:
         content = md_file.read()
     with open(output_path, 'w', encoding='utf-8') as txt_file:
         txt_file.write(content)
     return None
-"""
