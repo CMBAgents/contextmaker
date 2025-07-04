@@ -12,14 +12,8 @@ dependencies = [
     "sphinx>=5.0.0",
     "jupytext>=1.14.0",
     "sphinx-rtd-theme>=1.0.0",
-    "myst-parser>=1.0.0"
-    "numpy",
-    "pandas",
-    "requests",
-    "tqdm",
-    "matplotlib",
-    "scikit-learn",
-    "pyyaml"
+    "myst-parser>=1.0.0",
+    "sphinx-markdown-builder>=0.6.5"
 ]
 
 [tool.setuptools]
