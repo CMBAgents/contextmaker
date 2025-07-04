@@ -85,3 +85,38 @@ convert.run_conversion(input_path=input_path, output_path=output_path)
 * A plain text (`.txt`) file containing cleaned and normalized documentation, optimized for CMBAgent ingestion.
 
 ---
+
+## Générer la documentation Markdown pour n'importe quelle librairie
+
+Le script `converters/markdown_builder.py` permet de générer la documentation Sphinx d'une librairie Python en un seul fichier Markdown, utilisable comme contexte pour des LLMs.
+
+### Utilisation
+
+```bash
+python converters/markdown_builder.py \
+  --sphinx-source /chemin/vers/monprojet/docs \
+  --output /chemin/vers/output.md \
+  --source-root /chemin/vers/monprojet/monprojet
+```
+
+- `--sphinx-source` : chemin vers le dossier contenant `conf.py` et `index.rst` (typiquement le dossier `docs` du projet).
+- `--output` : chemin du fichier Markdown de sortie.
+- `--source-root` : chemin absolu vers le dossier racine du code source à documenter (typiquement le dossier qui contient le package principal du projet).
+
+**Exemple pour un projet structuré ainsi :**
+```
+monprojet/
+  monprojet/    # code source
+  docs/         # documentation Sphinx (conf.py, index.rst)
+```
+La commande sera :
+```bash
+python converters/markdown_builder.py \
+  --sphinx-source monprojet/docs \
+  --output output.md \
+  --source-root monprojet/monprojet
+```
+
+Le script ajoute automatiquement le chemin du code source au PYTHONPATH lors de la génération, ce qui permet d'importer le package même s'il n'est pas installé.
+
+---

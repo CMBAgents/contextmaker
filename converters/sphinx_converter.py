@@ -2,6 +2,7 @@ import subprocess
 import os
 import sys
 import logging
+from converters import auxiliary
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +49,8 @@ def convert_sphinx_docs_to_txt(input_path: str, output_path: str) -> bool:
     command = [
         sys.executable, markdown_builder_path,
         "--sphinx-source", sphinx_source,
-        "--output", markdown_output
+        "--output", markdown_output,
+        "--source-root", input_path
     ]
 
     if os.path.exists(notebook_path):
@@ -58,7 +60,6 @@ def convert_sphinx_docs_to_txt(input_path: str, output_path: str) -> bool:
     
     try:
         result = subprocess.run(command, capture_output=True, text=True, check=True)
-        logger.info(" ✅ Sphinx to Markdown conversion successful.")
         if result.stdout:
             logger.info(f"markdown_builder.py STDOUT:\n{result.stdout}")
         if result.stderr.strip():
@@ -74,7 +75,6 @@ def convert_sphinx_docs_to_txt(input_path: str, output_path: str) -> bool:
         # Restore original working directory
         os.chdir(original_cwd)
     return True
-
 #TODO : add the md to txt
 """
     # Optional markdown to txt
