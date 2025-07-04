@@ -2,7 +2,7 @@
 Context_Maker: A tool to convert library documentation into a format optimized for ingestion by CMBAgent.
 
 Usage:
-    python contextbuilder.py --i <path_to_library> --o <path_to_output_folder>
+    python contextmaker/contextmaker.py --i <path_to_library> --o <path_to_output_folder>
 
 Notes:
     - Run the script from the root of the project.

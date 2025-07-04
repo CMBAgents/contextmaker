@@ -1,16 +1,30 @@
 [project]
 name = "contextmaker"
 version = "0.1.0"
-description = "A simple context‐builder and converter toolkit"
-authors = [
-  { name = "Chadi Ait Ekioui", email = "chadiaitek2004@gmail.com" },
-]
-license = "MIT"
+description = "A simple context builder and converter toolkit"
 readme = "README.md"
-requires-python = ">=3.7"
-classifiers = [
-  "Programming Language :: Python :: 3"
+license = { text = "MIT" }
+authors = [
+  { name = "Chadi Ait Ekioui", email = "chadiaitek2004@gmail.com" }
+]
+requires-python = ">=3.8"
+dependencies = [
+    "sphinx>=5.0.0",
+    "jupytext>=1.14.0",
+    "sphinx-rtd-theme>=1.0.0",
+    "myst-parser>=1.0.0"
+    "numpy",
+    "pandas",
+    "requests",
+    "tqdm",
+    "matplotlib",
+    "scikit-learn",
+    "pyyaml"
 ]
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.setuptools]
+packages = { find = { where = ["src"] } }
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"

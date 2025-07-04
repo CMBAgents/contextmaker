@@ -39,7 +39,8 @@ def convert_sphinx_docs_to_txt(input_path: str, output_path: str) -> bool:
     notebook_path = os.path.join(input_path, "notebook.ipynb")  # Optional
 
     # Get absolute path to markdown_builder.py before changing directory
-    markdown_builder_path = os.path.abspath("converters/markdown_builder.py")
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    markdown_builder_path = os.path.join(current_dir, "markdown_builder.py")
     logger.info(f" 📚 markdown_builder_path: {markdown_builder_path}")
 
     # Change to output_path directory to create build artifacts there
