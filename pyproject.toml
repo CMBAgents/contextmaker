@@ -1,22 +1,16 @@
-[build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
-
 [project]
 name = "contextmaker"
 version = "0.1.0"
 description = "A simple context‐builder and converter toolkit"
 authors = [
-  { name="Chadi Ait Ekioui", email="chadiaitek2004@gmail.com" },
+  { name = "Chadi Ait Ekioui", email = "chadiaitek2004@gmail.com" },
 ]
-license = { text="MIT" }
+license = "MIT"
 readme = "README.md"
 requires-python = ">=3.7"
 classifiers = [
-  "Programming Language :: Python :: 3",
-  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3"
 ]
-dependencies = []
 
-[project.urls]
-"Source" = "https://github.com/CMBAgents/contextmaker"
+[tool.setuptools.packages.find]
+where = ["src"]
