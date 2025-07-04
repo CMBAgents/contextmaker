@@ -86,11 +86,11 @@ convert.run_conversion(input_path=input_path, output_path=output_path)
 
 ---
 
-## Générer la documentation Markdown pour n'importe quelle librairie
+## Generate Markdown Documentation for Any Library
 
-Le script `converters/markdown_builder.py` permet de générer la documentation Sphinx d'une librairie Python en un seul fichier Markdown, utilisable comme contexte pour des LLMs.
+The `converters/markdown_builder.py` script allows you to generate Sphinx documentation of a Python library into a single Markdown file, usable as context for LLMs.
 
-### Utilisation
+### Usage
 
 ```bash
 python converters/markdown_builder.py \
@@ -99,17 +99,17 @@ python converters/markdown_builder.py \
   --source-root /chemin/vers/monprojet/monprojet
 ```
 
-- `--sphinx-source` : chemin vers le dossier contenant `conf.py` et `index.rst` (typiquement le dossier `docs` du projet).
-- `--output` : chemin du fichier Markdown de sortie.
-- `--source-root` : chemin absolu vers le dossier racine du code source à documenter (typiquement le dossier qui contient le package principal du projet).
+- `--sphinx-source` : path to the directory containing `conf.py` and `index.rst` (typically the project's `docs` directory).
+- `--output` : path to the output Markdown file.
+- `--source-root` : absolute path to the root directory of the source code to document (typically the directory containing the main project package).
 
-**Exemple pour un projet structuré ainsi :**
+**Example for a project structured as follows:**
 ```
 monprojet/
-  monprojet/    # code source
-  docs/         # documentation Sphinx (conf.py, index.rst)
+  monprojet/    # source code
+  docs/         # Sphinx documentation (conf.py, index.rst)
 ```
-La commande sera :
+The command will be:
 ```bash
 python converters/markdown_builder.py \
   --sphinx-source monprojet/docs \
@@ -117,6 +117,6 @@ python converters/markdown_builder.py \
   --source-root monprojet/monprojet
 ```
 
-Le script ajoute automatiquement le chemin du code source au PYTHONPATH lors de la génération, ce qui permet d'importer le package même s'il n'est pas installé.
+The script automatically adds the source code path to PYTHONPATH during generation, which allows importing the package even if it's not installed.
 
 ---

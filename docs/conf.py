@@ -10,7 +10,7 @@ version = '0.1.0'
 
 extensions = [
     'sphinx.ext.autodoc',
-    'sphinx.ext.napoleon',  # pour Google-style docstrings
+    'sphinx.ext.napoleon',
     'sphinx.ext.viewcode',
     'sphinx.ext.intersphinx',
     'sphinx.ext.todo',
@@ -30,13 +30,13 @@ html_theme_options = {
     'titles_only': False
 }
 
-# Pour éviter que Sphinx n'échoue sur les imports manquants
+# To prevent Sphinx from failing on missing imports
 autodoc_mock_imports = []
 
-# Configuration pour l'intersphinx
+# Configuration for intersphinx
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3/', None),
 }
 
-# Configuration pour les todos
+# Configuration for todos
 todo_include_todos = True
