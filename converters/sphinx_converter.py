@@ -62,17 +62,19 @@ def convert_sphinx_docs_to_txt(input_path: str, output_path: str) -> bool:
     logger.info(f" 📚 Executing: {' '.join(command)}")
     
     try:
-        result = subprocess.run(command, capture_output=True, text=True, check=True)
+        result = subprocess.run(command, capture_output=True, text=True, check=False)
         if result.stdout:
             logger.info(f"markdown_builder.py STDOUT:\n{result.stdout}")
         if result.stderr.strip():
             logger.error(f"markdown_builder.py STDERR:\n{result.stderr}")
-
-    except subprocess.CalledProcessError as e:
-        logger.error(" ❌ markdown_builder.py failed.")
-        logger.error(f"Return code: {e.returncode}")
-        logger.error(f"STDOUT:\n{e.stdout}")
-        logger.error(f"STDERR:\n{e.stderr}")
+        
+        if result.returncode != 0:
+            logger.warning(f"markdown_builder.py returned non-zero exit code: {result.returncode}")
+            logger.warning("Continuing anyway as some markdown files might have been generated")
+            
+    except Exception as e:
+        logger.error(" ❌ markdown_builder.py failed with exception.")
+        logger.error(f"Exception: {e}")
         return False
     finally:
         # Restore original working directory

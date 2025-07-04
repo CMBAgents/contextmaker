@@ -23,54 +23,14 @@ logger = logging.getLogger(__name__)
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Build Sphinx documentation in Markdown format for LLM context.")
-    parser.add_argument(
-        "--exclude", 
-        type=str, 
-        default="", 
-        help="Comma-separated list of files to exclude (without .md extension)"
-    )
-    parser.add_argument(
-        "--output", 
-        type=str, 
-        required=True, 
-        help="Output file path"
-    )
-    parser.add_argument(
-        "--sphinx-source", 
-        type=str, 
-        required=True, 
-        help="Path to Sphinx source directory (where conf.py and index.rst are)"
-    )
-    parser.add_argument(
-        "--conf", 
-        type=str, 
-        default=None,
-        help="Path to conf.py (default: <sphinx-source>/conf.py)"
-    )
-    parser.add_argument(
-        "--index", 
-        type=str, 
-        default=None,
-        help="Path to index.rst (default: <sphinx-source>/index.rst)"
-    )
-    parser.add_argument(
-        "--notebook", 
-        type=str, 
-        default=None,  
-        help="Path to notebook to convert and append"
-    )
-    parser.add_argument(
-        "--source-root",
-        type=str,
-        required=True,
-        help="Absolute path to the root of the source code to add to sys.path for Sphinx autodoc. Typically the folder containing your main package.",
-    )
-    parser.add_argument(
-        "--library-name",
-        type=str,
-        default=None,
-        help="Name of the library for the documentation title. If not provided, will be guessed from the source-root path.",
-    )
+    parser.add_argument("--exclude", type=str, default="", help="Comma-separated list of files to exclude (without .md extension)")
+    parser.add_argument("--output", type=str, required=True, help="Output file path")
+    parser.add_argument("--sphinx-source", type=str, required=True, help="Path to Sphinx source directory (where conf.py and index.rst are)")
+    parser.add_argument("--conf", type=str, default=None, help="Path to conf.py (default: <sphinx-source>/conf.py)")
+    parser.add_argument("--index", type=str, default=None, help="Path to index.rst (default: <sphinx-source>/index.rst)")
+    parser.add_argument("--notebook", type=str, default=None, help="Path to notebook to convert and append")
+    parser.add_argument("--source-root", type=str, required=True, help="Absolute path to the root of the source code to add to sys.path for Sphinx autodoc.")
+    parser.add_argument("--library-name", type=str, default=None, help="Name of the library for the documentation title.")
     return parser.parse_args()
 
 
@@ -79,34 +39,19 @@ def build_markdown(sphinx_source, conf_path, source_root):
     logger.info(f" 📄 Temporary build directory: {build_dir}")
     os.makedirs(build_dir, exist_ok=True)
 
-    temp_conf_dir = os.path.join(build_dir, "temp_conf")
-    os.makedirs(temp_conf_dir, exist_ok=True)
-    temp_conf_path = os.path.join(temp_conf_dir, "conf.py")
-
-    with open(conf_path, encoding="utf-8") as f:
-        conf = f.read()
-
-    conf = conf.replace("'sphinx.ext.intersphinx',", "")
-
-    sys_path_snippet = (
-        f"import sys\nimport os\nsys.path.insert(0, os.path.abspath(r'{source_root}'))\n"
-    )
-    conf = sys_path_snippet + conf
-
-    with open(temp_conf_path, "w", encoding="utf-8") as f:
-        f.write(conf)
+    conf_dir = os.path.dirname(conf_path)
 
     logger.info(f" 📄 sphinx_source: {sphinx_source}")
     logger.info(f" 📄 conf_path: {conf_path}")
     logger.info(f" 📄 build_dir: {build_dir}")
-    logger.info(f" 📄 sphinx-build command: sphinx-build -b markdown -c {temp_conf_dir} {sphinx_source} {build_dir}")
-
+    logger.info(f" 📄 sphinx-build command: sphinx-build -b markdown -c {conf_dir} {sphinx_source} {build_dir}")
     logger.info(" 📄 Running sphinx-build...")
 
     result = subprocess.run(
-        ["sphinx-build", "-b", "markdown", "-c", temp_conf_dir, sphinx_source, build_dir],
+        ["sphinx-build", "-b", "markdown", "-c", conf_dir, sphinx_source, build_dir],
         capture_output=True,
         text=True,
+        env={**os.environ, "PYTHONPATH": source_root + os.pathsep + os.environ.get("PYTHONPATH", "")}
     )
 
     if result.returncode != 0:
@@ -118,7 +63,6 @@ def build_markdown(sphinx_source, conf_path, source_root):
 
     logger.info(" 📄 Files in build_dir after sphinx-build: %s", os.listdir(build_dir))
 
-    shutil.rmtree(temp_conf_dir)
     return build_dir
 
 
@@ -178,7 +122,7 @@ def combine_markdown(build_dir, exclude, output, index_path, library_name):
     with open(output, "w", encoding="utf-8") as out:
         out.write(f"# - {library_name} | Complete Documentation -\n\n")
         for i, f in enumerate(final_order):
-            if i > 0:  # Add separator before all files except the first
+            if i > 0:
                 out.write("\n\n---\n\n")
             section = os.path.splitext(os.path.basename(f))[0]
             out.write(f"## {section}\n\n")
@@ -227,7 +171,6 @@ def main():
     index_path = os.path.abspath(args.index) if args.index else os.path.join(sphinx_source, "index.rst")
     source_root = os.path.abspath(args.source_root)
     
-    # Guess library name from source-root if not provided
     library_name = args.library_name if args.library_name else os.path.basename(source_root)
 
     build_dir = build_markdown(sphinx_source, conf_path, source_root)
@@ -237,6 +180,7 @@ def main():
         notebook_md = convert_notebook(args.notebook)
         if notebook_md:
             append_notebook_markdown(args.output, notebook_md)
+
     logger.info(" ✅ Sphinx to Markdown conversion successful.")
 
 

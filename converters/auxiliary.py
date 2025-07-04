@@ -46,12 +46,19 @@ def has_documentation(lib_path: str) -> bool:
     Returns:
         bool: True if Sphinx files exist, else False.
     """
-    docs_path = os.path.join(lib_path, 'docs')
-    return (
-        os.path.exists(docs_path)
-        and os.path.isfile(os.path.join(docs_path, 'conf.py'))
-        and os.path.isfile(os.path.join(docs_path, 'index.rst'))
-    )
+    # Check for docs/source first (more common), then docs/
+    possible_sources = [
+        os.path.join(lib_path, "docs", "source"),
+        os.path.join(lib_path, "docs")
+    ]
+    
+    for candidate in possible_sources:
+        conf_py = os.path.join(candidate, "conf.py")
+        index_rst = os.path.join(candidate, "index.rst")
+        if os.path.exists(conf_py) and os.path.exists(index_rst):
+            return True
+    
+    return False
 
 
 def has_notebook(lib_path: str) -> bool:
