@@ -21,16 +21,16 @@ def find_format(lib_path: str) -> str:
         ValueError: If no valid format is detected.
     """
     if has_documentation(lib_path):
-        logger.info("📚 Detected Sphinx-style documentation.")
+        logger.info(" 📚 Detected Sphinx-style documentation.")
         return 'sphinx'
     elif has_notebook(lib_path):
-        logger.info("📒 Detected Jupyter notebooks.")
+        logger.info(" 📒 Detected Jupyter notebooks.")
         return 'notebook'
     elif has_docstrings(lib_path):
-        logger.info("📄 Detected inline docstrings.")
+        logger.info(" 📄 Detected inline docstrings.")
         return 'docstrings'
     elif has_source(lib_path):
-        logger.info("💻 Detected raw source code.")
+        logger.info(" 💻 Detected raw source code.")
         return 'source'
     else:
         raise ValueError("❌ No valid documentation format detected.")

@@ -57,7 +57,7 @@ def main():
         os.makedirs(output_path, exist_ok=True)
 
         doc_format = auxiliary.find_format(input_path)
-        logger.info(f"Detected documentation format: {doc_format}")
+        logger.info(f" 📚 Detected documentation format: {doc_format}")
 
         if doc_format == 'sphinx':
             success = sphinx_converter.convert_sphinx_docs_to_txt(input_path, output_path)
@@ -65,12 +65,12 @@ def main():
             success = nonsphinx_converter.create_final_markdown(input_path, output_path)
         #TODO : add the md to txt
         if success:
-            logger.info("✅ Conversion completed successfully.")
+            logger.info(" ✅ Conversion completed successfully.")
         else:
-            logger.warning("⚠️ Conversion completed with warnings or partial results.")
+            logger.warning(" ⚠️ Conversion completed with warnings or partial results.")
 
     except Exception as e:
-        logger.exception(f"An unexpected error occurred: {e}")
+        logger.exception(f" ❌ An unexpected error occurred: {e}")
         sys.exit(1)
 
 
