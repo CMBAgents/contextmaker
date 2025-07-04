@@ -2,7 +2,6 @@ import os
 import ast
 import glob
 import logging
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
