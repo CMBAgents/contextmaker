@@ -122,17 +122,18 @@ def has_source(lib_path: str) -> bool:
     return False
 
 
-def convert_markdown_to_txt(md_path: str, output_folder: Optional[str] = None) -> str:
+def convert_markdown_to_txt(output_folder: str, library_name: str) -> str:
     """
-    Convert a Markdown file to a plain text file by copying its content.
+    Convert the output.md file in the output folder to a .txt file with library name.
 
     Args:
-        md_path (str): Path to the markdown file.
-        output_folder (Optional[str]): Where to save the .txt file. Defaults to same folder.
+        output_folder (str): Folder containing output.md file.
+        library_name (str): Name of the library for the txt filename.
 
     Returns:
         str: Path to the created .txt file.
     """
+    md_path = os.path.join(output_folder, "output.md")
     if not os.path.isfile(md_path):
         logger.error(f"Markdown file does not exist: {md_path}")
         raise FileNotFoundError(md_path)
@@ -140,8 +141,8 @@ def convert_markdown_to_txt(md_path: str, output_folder: Optional[str] = None) -
     with open(md_path, 'r', encoding='utf-8') as md_file:
         content = md_file.read()
 
-    txt_filename = os.path.splitext(os.path.basename(md_path))[0] + '.txt'
-    txt_path = os.path.join(output_folder or os.path.dirname(md_path), txt_filename)
+    txt_filename = f"{library_name}.txt"
+    txt_path = os.path.join(output_folder, txt_filename)
 
     with open(txt_path, 'w', encoding='utf-8') as txt_file:
         txt_file.write(content)

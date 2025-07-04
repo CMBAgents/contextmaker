@@ -46,6 +46,9 @@ def convert_sphinx_docs_to_txt(input_path: str, output_path: str) -> bool:
     original_cwd = os.getcwd()
     os.chdir(output_path)
 
+    # Extract library name from input path
+    library_name = os.path.basename(input_path)
+
     command = [
         sys.executable, markdown_builder_path,
         "--sphinx-source", sphinx_source,
@@ -74,15 +77,16 @@ def convert_sphinx_docs_to_txt(input_path: str, output_path: str) -> bool:
     finally:
         # Restore original working directory
         os.chdir(original_cwd)
-    return True
-#TODO : add the md to txt
-"""
-    # Optional markdown to txt
+    # Markdown to txt
     if os.path.exists(markdown_output):
-        txt_output_path = auxiliary.convert_markdown_to_txt(output_path)
+        txt_output_path = auxiliary.convert_markdown_to_txt(output_path, library_name)
         logger.info(f" ✅ Markdown converted to text at: {txt_output_path}")
+        
+        # Delete the markdown file after successful conversion
+        os.remove(markdown_output)
+        logger.info(f" 📄 Deleted temporary markdown file: {markdown_output}")
+        
         return True
     else:
-        logger.warning(f"Markdown file not found at expected path: {markdown_output}")
+        logger.warning(f"Markdown file not found at expected path: {output_path}")
         return False
-"""

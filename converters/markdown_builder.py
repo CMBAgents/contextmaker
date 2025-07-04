@@ -65,6 +65,12 @@ def parse_args():
         required=True,
         help="Absolute path to the root of the source code to add to sys.path for Sphinx autodoc. Typically the folder containing your main package.",
     )
+    parser.add_argument(
+        "--library-name",
+        type=str,
+        default=None,
+        help="Name of the library for the documentation title. If not provided, will be guessed from the source-root path.",
+    )
     return parser.parse_args()
 
 
@@ -142,7 +148,7 @@ def extract_toctree_order(index_path):
     return toctree_docs
 
 
-def combine_markdown(build_dir, exclude, output, index_path):
+def combine_markdown(build_dir, exclude, output, index_path, library_name):
     md_files = glob.glob(os.path.join(build_dir, "*.md"))
     exclude_set = set(f"{e.strip()}.md" for e in exclude if e.strip())
 
@@ -170,8 +176,10 @@ def combine_markdown(build_dir, exclude, output, index_path):
 
     os.makedirs(os.path.dirname(output), exist_ok=True)
     with open(output, "w", encoding="utf-8") as out:
-        out.write("# Combined Documentation\n\n---\n\n")
-        for f in final_order:
+        out.write(f"# - {library_name} | Complete Documentation -\n\n")
+        for i, f in enumerate(final_order):
+            if i > 0:  # Add separator before all files except the first
+                out.write("\n\n---\n\n")
             section = os.path.splitext(os.path.basename(f))[0]
             out.write(f"## {section}\n\n")
             with open(f, encoding="utf-8") as infile:
@@ -218,9 +226,12 @@ def main():
     conf_path = os.path.abspath(args.conf) if args.conf else os.path.join(sphinx_source, "conf.py")
     index_path = os.path.abspath(args.index) if args.index else os.path.join(sphinx_source, "index.rst")
     source_root = os.path.abspath(args.source_root)
+    
+    # Guess library name from source-root if not provided
+    library_name = args.library_name if args.library_name else os.path.basename(source_root)
 
     build_dir = build_markdown(sphinx_source, conf_path, source_root)
-    combine_markdown(build_dir, exclude, args.output, index_path)
+    combine_markdown(build_dir, exclude, args.output, index_path, library_name)
 
     if args.notebook:
         notebook_md = convert_notebook(args.notebook)
