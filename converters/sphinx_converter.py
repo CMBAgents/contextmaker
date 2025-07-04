@@ -31,14 +31,17 @@ def convert_sphinx_docs_to_txt(input_path: str, output_path: str) -> bool:
             sphinx_source = candidate
             break
     if sphinx_source is None:
-        logger.error(f"Aucun dossier Sphinx valide trouvé (ni conf.py ni index.rst dans docs/source ou docs/)")
+        logger.error(" ❌ No valid sphinx source folder found (conf.py and index.rst in docs/source or docs/)")
         return False
 
     markdown_output = os.path.join(output_path, "output.md")
     notebook_path = os.path.join(input_path, "notebook.ipynb")  # Optional
 
+    # Get absolute path to markdown_builder.py before changing directory
+    markdown_builder_path = os.path.abspath("converters/markdown_builder.py")
+    
     command = [
-        sys.executable, "converters/markdown_builder.py",
+        sys.executable, markdown_builder_path,
         "--sphinx-source", sphinx_source,
         "--output", markdown_output
     ]
@@ -46,27 +49,34 @@ def convert_sphinx_docs_to_txt(input_path: str, output_path: str) -> bool:
     if os.path.exists(notebook_path):
         command += ["--notebook", notebook_path]
 
-    logger.info(f"Executing: {' '.join(command)}")
+    logger.info(f" 📚 Executing: {' '.join(command)}")
 
+    # Change to output_path directory to create build artifacts there
+    original_cwd = os.getcwd()
+    os.chdir(output_path)
+    
     try:
         result = subprocess.run(command, capture_output=True, text=True, check=True)
-        logger.info("✅ Sphinx to Markdown conversion successful.")
+        logger.info(" ✅ Sphinx to Markdown conversion successful.")
         if result.stdout:
             logger.debug(f"STDOUT:\n{result.stdout}")
         if result.stderr.strip():
             logger.warning(f"STDERR (warnings):\n{result.stderr}")
 
     except subprocess.CalledProcessError as e:
-        logger.error("❌ markdown_builder.py failed.")
+        logger.error(" ❌ markdown_builder.py failed.")
         logger.error(f"Return code: {e.returncode}")
         logger.error(f"STDOUT:\n{e.stdout}")
         logger.error(f"STDERR:\n{e.stderr}")
         return False
+    finally:
+        # Restore original working directory
+        os.chdir(original_cwd)
 
     # Optional markdown to txt
     if os.path.exists(markdown_output):
         txt_output_path = auxiliary.convert_markdown_to_txt(output_path)
-        logger.info(f"✅ Markdown converted to text at: {txt_output_path}")
+        logger.info(f" ✅ Markdown converted to text at: {txt_output_path}")
         return True
     else:
         logger.warning(f"Markdown file not found at expected path: {markdown_output}")

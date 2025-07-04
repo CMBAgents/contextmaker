@@ -9,6 +9,7 @@ import glob
 import os
 import shutil
 import subprocess
+import tempfile
 
 
 def parse_args():
@@ -51,7 +52,8 @@ def parse_args():
 
 
 def build_markdown(sphinx_source, conf_path):
-    build_dir = os.path.abspath("docs/_build/markdown")
+    # Create build directory in a temporary location
+    build_dir = tempfile.mkdtemp(prefix="sphinx_build_")
     os.makedirs(build_dir, exist_ok=True)
 
     # Create a temporary conf.py disabling intersphinx to avoid markdown build errors
