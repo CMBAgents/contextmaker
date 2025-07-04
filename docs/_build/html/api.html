@@ -1,0 +1,528 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>API Reference &mdash; ContextMaker 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=01f34227"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="contextmaker" href="modules.html" />
+    <link rel="prev" title="Examples" href="examples.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            ContextMaker
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#what-is-contextmaker">What is ContextMaker?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#key-features">Key Features</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#use-cases">Use Cases</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#acknowledgments">Acknowledgments</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#quick-start">Quick Start</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#installation">Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#command-line-interface-cli">Command Line Interface (CLI)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="usage.html#basic-usage">Basic Usage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="usage.html#advanced-usage">Advanced Usage</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#python-api">Python API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#supported-input-formats">Supported Input Formats</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="usage.html#sphinx-documentation">Sphinx Documentation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="usage.html#markdown-files">Markdown Files</a></li>
+<li class="toctree-l3"><a class="reference internal" href="usage.html#jupyter-notebooks">Jupyter Notebooks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="usage.html#python-source-code">Python Source Code</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#output-format">Output Format</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="usage.html#example-output-structure">Example Output Structure</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#markdown-builder-tool">Markdown Builder Tool</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="usage.html#usage">Usage</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#converting-sphinx-documentation">Converting Sphinx Documentation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="examples.html#example-1-basic-sphinx-project">Example 1: Basic Sphinx Project</a></li>
+<li class="toctree-l3"><a class="reference internal" href="examples.html#example-2-sphinx-with-custom-configuration">Example 2: Sphinx with Custom Configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#converting-jupyter-notebooks">Converting Jupyter Notebooks</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="examples.html#example-3-notebook-collection">Example 3: Notebook Collection</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#converting-source-code">Converting Source Code</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="examples.html#example-4-python-package-with-docstrings">Example 4: Python Package with Docstrings</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#converting-mixed-content">Converting Mixed Content</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="examples.html#example-5-project-with-multiple-documentation-types">Example 5: Project with Multiple Documentation Types</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#using-the-markdown-builder-directly">Using the Markdown Builder Directly</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="examples.html#example-6-custom-sphinx-to-markdown-conversion">Example 6: Custom Sphinx to Markdown Conversion</a></li>
+<li class="toctree-l3"><a class="reference internal" href="examples.html#example-7-including-notebooks-in-sphinx-build">Example 7: Including Notebooks in Sphinx Build</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#python-api-examples">Python API Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="examples.html#example-8-programmatic-usage">Example 8: Programmatic Usage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="examples.html#example-9-using-individual-converters">Example 9: Using Individual Converters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="examples.html#example-10-custom-markdown-processing">Example 10: Custom Markdown Processing</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#main-module">Main Module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#converters">Converters</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#auxiliary-functions">Auxiliary Functions</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#contextmaker.converters.auxiliary.convert_markdown_to_txt"><code class="docutils literal notranslate"><span class="pre">convert_markdown_to_txt()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#contextmaker.converters.auxiliary.find_format"><code class="docutils literal notranslate"><span class="pre">find_format()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#contextmaker.converters.auxiliary.has_docstrings"><code class="docutils literal notranslate"><span class="pre">has_docstrings()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#contextmaker.converters.auxiliary.has_documentation"><code class="docutils literal notranslate"><span class="pre">has_documentation()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#contextmaker.converters.auxiliary.has_notebook"><code class="docutils literal notranslate"><span class="pre">has_notebook()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#contextmaker.converters.auxiliary.has_source"><code class="docutils literal notranslate"><span class="pre">has_source()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#sphinx-converter">Sphinx Converter</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#non-sphinx-converter">Non-Sphinx Converter</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#markdown-builder">Markdown Builder</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#contextmaker.converters.markdown_builder.append_notebook_markdown"><code class="docutils literal notranslate"><span class="pre">append_notebook_markdown()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#contextmaker.converters.markdown_builder.build_markdown"><code class="docutils literal notranslate"><span class="pre">build_markdown()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#contextmaker.converters.markdown_builder.combine_markdown"><code class="docutils literal notranslate"><span class="pre">combine_markdown()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#contextmaker.converters.markdown_builder.convert_notebook"><code class="docutils literal notranslate"><span class="pre">convert_notebook()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#contextmaker.converters.markdown_builder.extract_toctree_order"><code class="docutils literal notranslate"><span class="pre">extract_toctree_order()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#contextmaker.converters.markdown_builder.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#contextmaker.converters.markdown_builder.parse_args"><code class="docutils literal notranslate"><span class="pre">parse_args()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#command-line-interface">Command Line Interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#arguments">Arguments</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#markdown-builder-cli">Markdown Builder CLI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id1">Arguments</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#examples">Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#basic-sphinx-conversion">Basic Sphinx Conversion</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#source-code-conversion">Source Code Conversion</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#notebook-conversion">Notebook Conversion</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">contextmaker</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="contextmaker.html">contextmaker package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="contextmaker.html#submodules">Submodules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="contextmaker.html#contextmaker-contextmaker-module">contextmaker.contextmaker module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="contextmaker.html#module-contextmaker">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="contextmaker.html">contextmaker package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="contextmaker.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contextmaker.html#contextmaker-contextmaker-module">contextmaker.contextmaker module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contextmaker.html#module-contextmaker">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">ContextMaker</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">API Reference</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/api.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="api-reference">
+<h1>API Reference<a class="headerlink" href="#api-reference" title="Link to this heading"></a></h1>
+<section id="main-module">
+<h2>Main Module<a class="headerlink" href="#main-module" title="Link to this heading"></a></h2>
+</section>
+<section id="converters">
+<h2>Converters<a class="headerlink" href="#converters" title="Link to this heading"></a></h2>
+<section id="auxiliary-functions">
+<h3>Auxiliary Functions<a class="headerlink" href="#auxiliary-functions" title="Link to this heading"></a></h3>
+<dl class="py function" id="module-contextmaker.converters.auxiliary">
+<dt class="sig sig-object py" id="contextmaker.converters.auxiliary.convert_markdown_to_txt">
+<span class="sig-prename descclassname"><span class="pre">contextmaker.converters.auxiliary.</span></span><span class="sig-name descname"><span class="pre">convert_markdown_to_txt</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_folder</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">library_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></span><a class="reference internal" href="_modules/contextmaker/converters/auxiliary.html#convert_markdown_to_txt"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#contextmaker.converters.auxiliary.convert_markdown_to_txt" title="Link to this definition"></a></dt>
+<dd><p>Convert the output.md file in the output folder to a .txt file with library name.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>output_folder</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Folder containing output.md file.</p></li>
+<li><p><strong>library_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Name of the library for the txt filename.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Path to the created .txt file.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="contextmaker.converters.auxiliary.find_format">
+<span class="sig-prename descclassname"><span class="pre">contextmaker.converters.auxiliary.</span></span><span class="sig-name descname"><span class="pre">find_format</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lib_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></span><a class="reference internal" href="_modules/contextmaker/converters/auxiliary.html#find_format"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#contextmaker.converters.auxiliary.find_format" title="Link to this definition"></a></dt>
+<dd><p>Detect the documentation format of a given library.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>lib_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Path to the root of the library.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>One of [‘sphinx’, ‘notebook’, ‘docstrings’, ‘source’].</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.13)"><strong>ValueError</strong></a> – If no valid format is detected.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="contextmaker.converters.auxiliary.has_docstrings">
+<span class="sig-prename descclassname"><span class="pre">contextmaker.converters.auxiliary.</span></span><span class="sig-name descname"><span class="pre">has_docstrings</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="_modules/contextmaker/converters/auxiliary.html#has_docstrings"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#contextmaker.converters.auxiliary.has_docstrings" title="Link to this definition"></a></dt>
+<dd><p>Check if the Python file contains docstrings.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>file_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Path to a .py file.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>True if at least one docstring is found.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)">bool</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="contextmaker.converters.auxiliary.has_documentation">
+<span class="sig-prename descclassname"><span class="pre">contextmaker.converters.auxiliary.</span></span><span class="sig-name descname"><span class="pre">has_documentation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lib_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="_modules/contextmaker/converters/auxiliary.html#has_documentation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#contextmaker.converters.auxiliary.has_documentation" title="Link to this definition"></a></dt>
+<dd><p>Check if the library contains a Sphinx documentation folder.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>lib_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Path to the library.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>True if Sphinx files exist, else False.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)">bool</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="contextmaker.converters.auxiliary.has_notebook">
+<span class="sig-prename descclassname"><span class="pre">contextmaker.converters.auxiliary.</span></span><span class="sig-name descname"><span class="pre">has_notebook</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lib_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="_modules/contextmaker/converters/auxiliary.html#has_notebook"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#contextmaker.converters.auxiliary.has_notebook" title="Link to this definition"></a></dt>
+<dd><p>Check if the library contains Jupyter notebooks.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>lib_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Path to the library.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>True if at least one .ipynb file exists.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)">bool</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="contextmaker.converters.auxiliary.has_source">
+<span class="sig-prename descclassname"><span class="pre">contextmaker.converters.auxiliary.</span></span><span class="sig-name descname"><span class="pre">has_source</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lib_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="_modules/contextmaker/converters/auxiliary.html#has_source"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#contextmaker.converters.auxiliary.has_source" title="Link to this definition"></a></dt>
+<dd><p>Check if the library has source code but no other documentation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>lib_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Path to the library.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>True if only source code is found.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)">bool</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="sphinx-converter">
+<h3>Sphinx Converter<a class="headerlink" href="#sphinx-converter" title="Link to this heading"></a></h3>
+</section>
+<section id="non-sphinx-converter">
+<h3>Non-Sphinx Converter<a class="headerlink" href="#non-sphinx-converter" title="Link to this heading"></a></h3>
+</section>
+<section id="markdown-builder">
+<h3>Markdown Builder<a class="headerlink" href="#markdown-builder" title="Link to this heading"></a></h3>
+<p id="module-contextmaker.converters.markdown_builder">This script builds Sphinx documentation in Markdown format and combines it into a single file
+for use as context with Large Language Models (LLMs).</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="contextmaker.converters.markdown_builder.append_notebook_markdown">
+<span class="sig-prename descclassname"><span class="pre">contextmaker.converters.markdown_builder.</span></span><span class="sig-name descname"><span class="pre">append_notebook_markdown</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">notebook_md</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/contextmaker/converters/markdown_builder.html#append_notebook_markdown"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#contextmaker.converters.markdown_builder.append_notebook_markdown" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="contextmaker.converters.markdown_builder.build_markdown">
+<span class="sig-prename descclassname"><span class="pre">contextmaker.converters.markdown_builder.</span></span><span class="sig-name descname"><span class="pre">build_markdown</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sphinx_source</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">conf_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_root</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/contextmaker/converters/markdown_builder.html#build_markdown"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#contextmaker.converters.markdown_builder.build_markdown" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="contextmaker.converters.markdown_builder.combine_markdown">
+<span class="sig-prename descclassname"><span class="pre">contextmaker.converters.markdown_builder.</span></span><span class="sig-name descname"><span class="pre">combine_markdown</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">build_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclude</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">index_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">library_name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/contextmaker/converters/markdown_builder.html#combine_markdown"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#contextmaker.converters.markdown_builder.combine_markdown" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="contextmaker.converters.markdown_builder.convert_notebook">
+<span class="sig-prename descclassname"><span class="pre">contextmaker.converters.markdown_builder.</span></span><span class="sig-name descname"><span class="pre">convert_notebook</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nb_path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/contextmaker/converters/markdown_builder.html#convert_notebook"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#contextmaker.converters.markdown_builder.convert_notebook" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="contextmaker.converters.markdown_builder.extract_toctree_order">
+<span class="sig-prename descclassname"><span class="pre">contextmaker.converters.markdown_builder.</span></span><span class="sig-name descname"><span class="pre">extract_toctree_order</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index_path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/contextmaker/converters/markdown_builder.html#extract_toctree_order"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#contextmaker.converters.markdown_builder.extract_toctree_order" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="contextmaker.converters.markdown_builder.main">
+<span class="sig-prename descclassname"><span class="pre">contextmaker.converters.markdown_builder.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/contextmaker/converters/markdown_builder.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#contextmaker.converters.markdown_builder.main" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="contextmaker.converters.markdown_builder.parse_args">
+<span class="sig-prename descclassname"><span class="pre">contextmaker.converters.markdown_builder.</span></span><span class="sig-name descname"><span class="pre">parse_args</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/contextmaker/converters/markdown_builder.html#parse_args"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#contextmaker.converters.markdown_builder.parse_args" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
+</section>
+<section id="command-line-interface">
+<h2>Command Line Interface<a class="headerlink" href="#command-line-interface" title="Link to this heading"></a></h2>
+<p>The main entry point for ContextMaker is the command line interface:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>contextmaker.contextmaker<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
+</pre></div>
+</div>
+</section>
+<section id="arguments">
+<h2>Arguments<a class="headerlink" href="#arguments" title="Link to this heading"></a></h2>
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-input_path">
+<span id="cmdoption-i"></span><span class="sig-name descname"><span class="pre">--input_path</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">-i</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-input_path" title="Link to this definition"></a></dt>
+<dd><p>Path to the library documentation folder or project root.
+Required.</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-output_path">
+<span id="cmdoption-o"></span><span class="sig-name descname"><span class="pre">--output_path</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">-o</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-output_path" title="Link to this definition"></a></dt>
+<dd><p>Path to the output folder for converted files.
+Required.</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-library-name">
+<span class="sig-name descname"><span class="pre">--library-name</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-library-name" title="Link to this definition"></a></dt>
+<dd><p>Name of the library for the documentation title.
+Optional. Defaults to the basename of the input path.</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-exclude">
+<span class="sig-name descname"><span class="pre">--exclude</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-exclude" title="Link to this definition"></a></dt>
+<dd><p>Comma-separated list of files to exclude (without extension).
+Optional.</p>
+</dd></dl>
+
+</section>
+<section id="markdown-builder-cli">
+<h2>Markdown Builder CLI<a class="headerlink" href="#markdown-builder-cli" title="Link to this heading"></a></h2>
+<p>The markdown builder tool has its own command line interface:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>converters/markdown_builder.py<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
+</pre></div>
+</div>
+</section>
+<section id="id1">
+<h2>Arguments<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-sphinx-source">
+<span class="sig-name descname"><span class="pre">--sphinx-source</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-sphinx-source" title="Link to this definition"></a></dt>
+<dd><p>Path to Sphinx source directory (where conf.py and index.rst are).
+Required.</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-output">
+<span class="sig-name descname"><span class="pre">--output</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-output" title="Link to this definition"></a></dt>
+<dd><p>Output file path for the generated markdown.
+Required.</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-source-root">
+<span class="sig-name descname"><span class="pre">--source-root</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-source-root" title="Link to this definition"></a></dt>
+<dd><p>Absolute path to the root of the source code to add to sys.path for Sphinx autodoc.
+Required.</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-conf">
+<span class="sig-name descname"><span class="pre">--conf</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-conf" title="Link to this definition"></a></dt>
+<dd><p>Path to conf.py (default: &lt;sphinx-source&gt;/conf.py).
+Optional.</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-index">
+<span class="sig-name descname"><span class="pre">--index</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-index" title="Link to this definition"></a></dt>
+<dd><p>Path to index.rst (default: &lt;sphinx-source&gt;/index.rst).
+Optional.</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-notebook">
+<span class="sig-name descname"><span class="pre">--notebook</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-notebook" title="Link to this definition"></a></dt>
+<dd><p>Path to notebook to convert and append.
+Optional.</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-0">
+<span class="sig-name descname"><span class="pre">--library-name</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-0" title="Link to this definition"></a></dt>
+<dd><p>Name of the library for the documentation title.
+Optional.</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-1">
+<span class="sig-name descname"><span class="pre">--exclude</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-1" title="Link to this definition"></a></dt>
+<dd><p>Comma-separated list of files to exclude (without .md extension).
+Optional.</p>
+</dd></dl>
+
+</section>
+<section id="examples">
+<h2>Examples<a class="headerlink" href="#examples" title="Link to this heading"></a></h2>
+<section id="basic-sphinx-conversion">
+<h3>Basic Sphinx Conversion<a class="headerlink" href="#basic-sphinx-conversion" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">contextmaker.contextmaker</span><span class="w"> </span><span class="kn">import</span> <span class="n">main</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+
+<span class="c1"># Convert Sphinx documentation</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">argv</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s1">&#39;contextmaker&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;--input_path&#39;</span><span class="p">,</span> <span class="s1">&#39;/path/to/myproject/docs&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;--output_path&#39;</span><span class="p">,</span> <span class="s1">&#39;./converted_docs&#39;</span>
+<span class="p">]</span>
+<span class="n">main</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="source-code-conversion">
+<h3>Source Code Conversion<a class="headerlink" href="#source-code-conversion" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">contextmaker.converters.nonsphinx_converter</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_final_markdown</span>
+
+<span class="c1"># Convert source code with docstrings</span>
+<span class="n">create_final_markdown</span><span class="p">(</span><span class="s1">&#39;/path/to/source&#39;</span><span class="p">,</span> <span class="s1">&#39;./output&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="notebook-conversion">
+<h3>Notebook Conversion<a class="headerlink" href="#notebook-conversion" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">contextmaker.converters.markdown_builder</span><span class="w"> </span><span class="kn">import</span> <span class="n">convert_notebook</span>
+
+<span class="c1"># Convert Jupyter notebook to markdown</span>
+<span class="n">md_path</span> <span class="o">=</span> <span class="n">convert_notebook</span><span class="p">(</span><span class="s1">&#39;/path/to/notebook.ipynb&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="examples.html" class="btn btn-neutral float-left" title="Examples" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="modules.html" class="btn btn-neutral float-right" title="contextmaker" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Chadi Ait Ekioui.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

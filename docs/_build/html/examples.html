@@ -1,0 +1,387 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Examples &mdash; ContextMaker 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=01f34227"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="API Reference" href="api.html" />
+    <link rel="prev" title="Usage Guide" href="usage.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            ContextMaker
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#what-is-contextmaker">What is ContextMaker?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#key-features">Key Features</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#use-cases">Use Cases</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#acknowledgments">Acknowledgments</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#quick-start">Quick Start</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#installation">Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#command-line-interface-cli">Command Line Interface (CLI)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="usage.html#basic-usage">Basic Usage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="usage.html#advanced-usage">Advanced Usage</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#python-api">Python API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#supported-input-formats">Supported Input Formats</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="usage.html#sphinx-documentation">Sphinx Documentation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="usage.html#markdown-files">Markdown Files</a></li>
+<li class="toctree-l3"><a class="reference internal" href="usage.html#jupyter-notebooks">Jupyter Notebooks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="usage.html#python-source-code">Python Source Code</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#output-format">Output Format</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="usage.html#example-output-structure">Example Output Structure</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#markdown-builder-tool">Markdown Builder Tool</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="usage.html#usage">Usage</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#converting-sphinx-documentation">Converting Sphinx Documentation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#example-1-basic-sphinx-project">Example 1: Basic Sphinx Project</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#example-2-sphinx-with-custom-configuration">Example 2: Sphinx with Custom Configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#converting-jupyter-notebooks">Converting Jupyter Notebooks</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#example-3-notebook-collection">Example 3: Notebook Collection</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#converting-source-code">Converting Source Code</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#example-4-python-package-with-docstrings">Example 4: Python Package with Docstrings</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#converting-mixed-content">Converting Mixed Content</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#example-5-project-with-multiple-documentation-types">Example 5: Project with Multiple Documentation Types</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#using-the-markdown-builder-directly">Using the Markdown Builder Directly</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#example-6-custom-sphinx-to-markdown-conversion">Example 6: Custom Sphinx to Markdown Conversion</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#example-7-including-notebooks-in-sphinx-build">Example 7: Including Notebooks in Sphinx Build</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#python-api-examples">Python API Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#example-8-programmatic-usage">Example 8: Programmatic Usage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#example-9-using-individual-converters">Example 9: Using Individual Converters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#example-10-custom-markdown-processing">Example 10: Custom Markdown Processing</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api.html#main-module">Main Module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#converters">Converters</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api.html#auxiliary-functions">Auxiliary Functions</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#contextmaker.converters.auxiliary.convert_markdown_to_txt"><code class="docutils literal notranslate"><span class="pre">convert_markdown_to_txt()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#contextmaker.converters.auxiliary.find_format"><code class="docutils literal notranslate"><span class="pre">find_format()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#contextmaker.converters.auxiliary.has_docstrings"><code class="docutils literal notranslate"><span class="pre">has_docstrings()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#contextmaker.converters.auxiliary.has_documentation"><code class="docutils literal notranslate"><span class="pre">has_documentation()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#contextmaker.converters.auxiliary.has_notebook"><code class="docutils literal notranslate"><span class="pre">has_notebook()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#contextmaker.converters.auxiliary.has_source"><code class="docutils literal notranslate"><span class="pre">has_source()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#sphinx-converter">Sphinx Converter</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#non-sphinx-converter">Non-Sphinx Converter</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#markdown-builder">Markdown Builder</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#contextmaker.converters.markdown_builder.append_notebook_markdown"><code class="docutils literal notranslate"><span class="pre">append_notebook_markdown()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#contextmaker.converters.markdown_builder.build_markdown"><code class="docutils literal notranslate"><span class="pre">build_markdown()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#contextmaker.converters.markdown_builder.combine_markdown"><code class="docutils literal notranslate"><span class="pre">combine_markdown()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#contextmaker.converters.markdown_builder.convert_notebook"><code class="docutils literal notranslate"><span class="pre">convert_notebook()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#contextmaker.converters.markdown_builder.extract_toctree_order"><code class="docutils literal notranslate"><span class="pre">extract_toctree_order()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#contextmaker.converters.markdown_builder.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#contextmaker.converters.markdown_builder.parse_args"><code class="docutils literal notranslate"><span class="pre">parse_args()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#command-line-interface">Command Line Interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#arguments">Arguments</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#markdown-builder-cli">Markdown Builder CLI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#id1">Arguments</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#examples">Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api.html#basic-sphinx-conversion">Basic Sphinx Conversion</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#source-code-conversion">Source Code Conversion</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#notebook-conversion">Notebook Conversion</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">contextmaker</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="contextmaker.html">contextmaker package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="contextmaker.html#submodules">Submodules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="contextmaker.html#contextmaker-contextmaker-module">contextmaker.contextmaker module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="contextmaker.html#module-contextmaker">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="contextmaker.html">contextmaker package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="contextmaker.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contextmaker.html#contextmaker-contextmaker-module">contextmaker.contextmaker module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contextmaker.html#module-contextmaker">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">ContextMaker</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Examples</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/examples.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="examples">
+<h1>Examples<a class="headerlink" href="#examples" title="Link to this heading"></a></h1>
+<p>This section provides practical examples of how to use ContextMaker for different scenarios.</p>
+<section id="converting-sphinx-documentation">
+<h2>Converting Sphinx Documentation<a class="headerlink" href="#converting-sphinx-documentation" title="Link to this heading"></a></h2>
+<section id="example-1-basic-sphinx-project">
+<h3>Example 1: Basic Sphinx Project<a class="headerlink" href="#example-1-basic-sphinx-project" title="Link to this heading"></a></h3>
+<p>For a typical Sphinx project structure:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>myproject/
+├──<span class="w"> </span>docs/
+│<span class="w">   </span>├──<span class="w"> </span>conf.py
+│<span class="w">   </span>├──<span class="w"> </span>index.rst
+│<span class="w">   </span>└──<span class="w"> </span>api.rst
+└──<span class="w"> </span>src/
+<span class="w">    </span>└──<span class="w"> </span>myproject/
+</pre></div>
+</div>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>contextmaker.contextmaker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--input_path<span class="w"> </span>/path/to/myproject<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output_path<span class="w"> </span>./converted_docs
+</pre></div>
+</div>
+</section>
+<section id="example-2-sphinx-with-custom-configuration">
+<h3>Example 2: Sphinx with Custom Configuration<a class="headerlink" href="#example-2-sphinx-with-custom-configuration" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>contextmaker.contextmaker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--input_path<span class="w"> </span>/path/to/myproject/docs<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output_path<span class="w"> </span>./converted_docs<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--library-name<span class="w"> </span><span class="s2">&quot;MyScientificLibrary&quot;</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="converting-jupyter-notebooks">
+<h2>Converting Jupyter Notebooks<a class="headerlink" href="#converting-jupyter-notebooks" title="Link to this heading"></a></h2>
+<section id="example-3-notebook-collection">
+<h3>Example 3: Notebook Collection<a class="headerlink" href="#example-3-notebook-collection" title="Link to this heading"></a></h3>
+<p>For a collection of Jupyter notebooks:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>notebooks/
+├──<span class="w"> </span>tutorial_01.ipynb
+├──<span class="w"> </span>tutorial_02.ipynb
+└──<span class="w"> </span>examples.ipynb
+</pre></div>
+</div>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>contextmaker.contextmaker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--input_path<span class="w"> </span>./notebooks<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output_path<span class="w"> </span>./converted_docs
+</pre></div>
+</div>
+</section>
+</section>
+<section id="converting-source-code">
+<h2>Converting Source Code<a class="headerlink" href="#converting-source-code" title="Link to this heading"></a></h2>
+<section id="example-4-python-package-with-docstrings">
+<h3>Example 4: Python Package with Docstrings<a class="headerlink" href="#example-4-python-package-with-docstrings" title="Link to this heading"></a></h3>
+<p>For a Python package with comprehensive docstrings:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>mypackage/
+├──<span class="w"> </span>mypackage/
+│<span class="w">   </span>├──<span class="w"> </span>__init__.py
+│<span class="w">   </span>├──<span class="w"> </span>core.py
+│<span class="w">   </span>└──<span class="w"> </span>utils.py
+└──<span class="w"> </span>README.md
+</pre></div>
+</div>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>contextmaker.contextmaker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--input_path<span class="w"> </span>./mypackage<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output_path<span class="w"> </span>./converted_docs
+</pre></div>
+</div>
+</section>
+</section>
+<section id="converting-mixed-content">
+<h2>Converting Mixed Content<a class="headerlink" href="#converting-mixed-content" title="Link to this heading"></a></h2>
+<section id="example-5-project-with-multiple-documentation-types">
+<h3>Example 5: Project with Multiple Documentation Types<a class="headerlink" href="#example-5-project-with-multiple-documentation-types" title="Link to this heading"></a></h3>
+<p>For a project with various documentation sources:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>scientific_project/
+├──<span class="w"> </span>docs/
+│<span class="w">   </span>├──<span class="w"> </span>conf.py
+│<span class="w">   </span>└──<span class="w"> </span>index.rst
+├──<span class="w"> </span>notebooks/
+│<span class="w">   </span>└──<span class="w"> </span>analysis.ipynb
+├──<span class="w"> </span>src/
+│<span class="w">   </span>└──<span class="w"> </span>scientific/
+└──<span class="w"> </span>README.md
+</pre></div>
+</div>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>contextmaker.contextmaker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--input_path<span class="w"> </span>./scientific_project<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output_path<span class="w"> </span>./converted_docs
+</pre></div>
+</div>
+</section>
+</section>
+<section id="using-the-markdown-builder-directly">
+<h2>Using the Markdown Builder Directly<a class="headerlink" href="#using-the-markdown-builder-directly" title="Link to this heading"></a></h2>
+<section id="example-6-custom-sphinx-to-markdown-conversion">
+<h3>Example 6: Custom Sphinx to Markdown Conversion<a class="headerlink" href="#example-6-custom-sphinx-to-markdown-conversion" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>converters/markdown_builder.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sphinx-source<span class="w"> </span>/path/to/project/docs<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output<span class="w"> </span>./output.md<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--source-root<span class="w"> </span>/path/to/project/src<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--library-name<span class="w"> </span><span class="s2">&quot;MyLibrary&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--exclude<span class="w"> </span><span class="s2">&quot;internal,private&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="example-7-including-notebooks-in-sphinx-build">
+<h3>Example 7: Including Notebooks in Sphinx Build<a class="headerlink" href="#example-7-including-notebooks-in-sphinx-build" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>converters/markdown_builder.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sphinx-source<span class="w"> </span>/path/to/project/docs<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output<span class="w"> </span>./output.md<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--source-root<span class="w"> </span>/path/to/project/src<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--notebook<span class="w"> </span>/path/to/project/notebooks/tutorial.ipynb
+</pre></div>
+</div>
+</section>
+</section>
+<section id="python-api-examples">
+<h2>Python API Examples<a class="headerlink" href="#python-api-examples" title="Link to this heading"></a></h2>
+<section id="example-8-programmatic-usage">
+<h3>Example 8: Programmatic Usage<a class="headerlink" href="#example-8-programmatic-usage" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">contextmaker.contextmaker</span><span class="w"> </span><span class="kn">import</span> <span class="n">main</span>
+
+<span class="c1"># Set up arguments programmatically</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">argv</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s1">&#39;contextmaker&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;--input_path&#39;</span><span class="p">,</span> <span class="s1">&#39;/path/to/myproject&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;--output_path&#39;</span><span class="p">,</span> <span class="s1">&#39;./converted_docs&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;--library-name&#39;</span><span class="p">,</span> <span class="s1">&#39;MyProject&#39;</span>
+<span class="p">]</span>
+
+<span class="c1"># Run conversion</span>
+<span class="n">main</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="example-9-using-individual-converters">
+<h3>Example 9: Using Individual Converters<a class="headerlink" href="#example-9-using-individual-converters" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">contextmaker.converters.sphinx_converter</span><span class="w"> </span><span class="kn">import</span> <span class="n">convert_sphinx_docs_to_txt</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">contextmaker.converters.nonsphinx_converter</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_final_markdown</span>
+
+<span class="c1"># Convert Sphinx docs</span>
+<span class="n">success</span> <span class="o">=</span> <span class="n">convert_sphinx_docs_to_txt</span><span class="p">(</span><span class="s1">&#39;/path/to/docs&#39;</span><span class="p">,</span> <span class="s1">&#39;./output&#39;</span><span class="p">)</span>
+
+<span class="c1"># Convert other formats</span>
+<span class="n">create_final_markdown</span><span class="p">(</span><span class="s1">&#39;/path/to/source&#39;</span><span class="p">,</span> <span class="s1">&#39;./output&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="example-10-custom-markdown-processing">
+<h3>Example 10: Custom Markdown Processing<a class="headerlink" href="#example-10-custom-markdown-processing" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">contextmaker.converters.markdown_builder</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_markdown</span><span class="p">,</span> <span class="n">combine_markdown</span>
+
+<span class="c1"># Build markdown from Sphinx</span>
+<span class="n">build_dir</span> <span class="o">=</span> <span class="n">build_markdown</span><span class="p">(</span><span class="s1">&#39;/path/to/docs&#39;</span><span class="p">,</span> <span class="s1">&#39;/path/to/docs/conf.py&#39;</span><span class="p">,</span> <span class="s1">&#39;/path/to/src&#39;</span><span class="p">)</span>
+
+<span class="c1"># Combine markdown files</span>
+<span class="n">combine_markdown</span><span class="p">(</span><span class="n">build_dir</span><span class="p">,</span> <span class="p">[],</span> <span class="s1">&#39;./output.md&#39;</span><span class="p">,</span> <span class="s1">&#39;/path/to/docs/index.rst&#39;</span><span class="p">,</span> <span class="s1">&#39;MyLibrary&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="usage.html" class="btn btn-neutral float-left" title="Usage Guide" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="api.html" class="btn btn-neutral float-right" title="API Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Chadi Ait Ekioui.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

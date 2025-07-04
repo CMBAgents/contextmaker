@@ -1,0 +1,426 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>contextmaker.converters.markdown_builder &mdash; ContextMaker 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ContextMaker
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../introduction.html">Introduction</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../introduction.html#what-is-contextmaker">What is ContextMaker?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../introduction.html#key-features">Key Features</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../introduction.html#use-cases">Use Cases</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../introduction.html#acknowledgments">Acknowledgments</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../introduction.html#quick-start">Quick Start</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../usage.html">Usage Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../usage.html#installation">Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../usage.html#command-line-interface-cli">Command Line Interface (CLI)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../usage.html#basic-usage">Basic Usage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../usage.html#advanced-usage">Advanced Usage</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../usage.html#python-api">Python API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../usage.html#supported-input-formats">Supported Input Formats</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../usage.html#sphinx-documentation">Sphinx Documentation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../usage.html#markdown-files">Markdown Files</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../usage.html#jupyter-notebooks">Jupyter Notebooks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../usage.html#python-source-code">Python Source Code</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../usage.html#output-format">Output Format</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../usage.html#example-output-structure">Example Output Structure</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../usage.html#markdown-builder-tool">Markdown Builder Tool</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../usage.html#usage">Usage</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples.html">Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples.html#converting-sphinx-documentation">Converting Sphinx Documentation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../examples.html#example-1-basic-sphinx-project">Example 1: Basic Sphinx Project</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../examples.html#example-2-sphinx-with-custom-configuration">Example 2: Sphinx with Custom Configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples.html#converting-jupyter-notebooks">Converting Jupyter Notebooks</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../examples.html#example-3-notebook-collection">Example 3: Notebook Collection</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples.html#converting-source-code">Converting Source Code</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../examples.html#example-4-python-package-with-docstrings">Example 4: Python Package with Docstrings</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples.html#converting-mixed-content">Converting Mixed Content</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../examples.html#example-5-project-with-multiple-documentation-types">Example 5: Project with Multiple Documentation Types</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples.html#using-the-markdown-builder-directly">Using the Markdown Builder Directly</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../examples.html#example-6-custom-sphinx-to-markdown-conversion">Example 6: Custom Sphinx to Markdown Conversion</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../examples.html#example-7-including-notebooks-in-sphinx-build">Example 7: Including Notebooks in Sphinx Build</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples.html#python-api-examples">Python API Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../examples.html#example-8-programmatic-usage">Example 8: Programmatic Usage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../examples.html#example-9-using-individual-converters">Example 9: Using Individual Converters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../examples.html#example-10-custom-markdown-processing">Example 10: Custom Markdown Processing</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../api.html#main-module">Main Module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api.html#converters">Converters</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api.html#auxiliary-functions">Auxiliary Functions</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api.html#contextmaker.converters.auxiliary.convert_markdown_to_txt"><code class="docutils literal notranslate"><span class="pre">convert_markdown_to_txt()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api.html#contextmaker.converters.auxiliary.find_format"><code class="docutils literal notranslate"><span class="pre">find_format()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api.html#contextmaker.converters.auxiliary.has_docstrings"><code class="docutils literal notranslate"><span class="pre">has_docstrings()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api.html#contextmaker.converters.auxiliary.has_documentation"><code class="docutils literal notranslate"><span class="pre">has_documentation()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api.html#contextmaker.converters.auxiliary.has_notebook"><code class="docutils literal notranslate"><span class="pre">has_notebook()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api.html#contextmaker.converters.auxiliary.has_source"><code class="docutils literal notranslate"><span class="pre">has_source()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api.html#sphinx-converter">Sphinx Converter</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api.html#non-sphinx-converter">Non-Sphinx Converter</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api.html#markdown-builder">Markdown Builder</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api.html#contextmaker.converters.markdown_builder.append_notebook_markdown"><code class="docutils literal notranslate"><span class="pre">append_notebook_markdown()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api.html#contextmaker.converters.markdown_builder.build_markdown"><code class="docutils literal notranslate"><span class="pre">build_markdown()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api.html#contextmaker.converters.markdown_builder.combine_markdown"><code class="docutils literal notranslate"><span class="pre">combine_markdown()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api.html#contextmaker.converters.markdown_builder.convert_notebook"><code class="docutils literal notranslate"><span class="pre">convert_notebook()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api.html#contextmaker.converters.markdown_builder.extract_toctree_order"><code class="docutils literal notranslate"><span class="pre">extract_toctree_order()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api.html#contextmaker.converters.markdown_builder.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api.html#contextmaker.converters.markdown_builder.parse_args"><code class="docutils literal notranslate"><span class="pre">parse_args()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api.html#command-line-interface">Command Line Interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api.html#arguments">Arguments</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api.html#markdown-builder-cli">Markdown Builder CLI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api.html#id1">Arguments</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api.html#examples">Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api.html#basic-sphinx-conversion">Basic Sphinx Conversion</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api.html#source-code-conversion">Source Code Conversion</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api.html#notebook-conversion">Notebook Conversion</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules.html">contextmaker</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../contextmaker.html">contextmaker package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../contextmaker.html#submodules">Submodules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../contextmaker.html#contextmaker-contextmaker-module">contextmaker.contextmaker module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../contextmaker.html#module-contextmaker">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../contextmaker.html">contextmaker package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../contextmaker.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../contextmaker.html#contextmaker-contextmaker-module">contextmaker.contextmaker module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../contextmaker.html#module-contextmaker">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ContextMaker</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">contextmaker.converters.markdown_builder</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for contextmaker.converters.markdown_builder</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This script builds Sphinx documentation in Markdown format and combines it into a single file</span>
+<span class="sd">for use as context with Large Language Models (LLMs).</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">glob</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+
+<span class="c1"># Configure logging</span>
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span>
+    <span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span>
+    <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;[</span><span class="si">%(levelname)s</span><span class="s2">] </span><span class="si">%(message)s</span><span class="s2">&quot;</span>
+<span class="p">)</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="parse_args">
+<a class="viewcode-back" href="../../../api.html#contextmaker.converters.markdown_builder.parse_args">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">parse_args</span><span class="p">():</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Build Sphinx documentation in Markdown format for LLM context.&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--exclude&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Comma-separated list of files to exclude (without .md extension)&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--output&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Output file path&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--sphinx-source&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Path to Sphinx source directory (where conf.py and index.rst are)&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--conf&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Path to conf.py (default: &lt;sphinx-source&gt;/conf.py)&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--index&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Path to index.rst (default: &lt;sphinx-source&gt;/index.rst)&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--notebook&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Path to notebook to convert and append&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--source-root&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Absolute path to the root of the source code to add to sys.path for Sphinx autodoc.&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--library-name&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Name of the library for the documentation title.&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="build_markdown">
+<a class="viewcode-back" href="../../../api.html#contextmaker.converters.markdown_builder.build_markdown">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">build_markdown</span><span class="p">(</span><span class="n">sphinx_source</span><span class="p">,</span> <span class="n">conf_path</span><span class="p">,</span> <span class="n">source_root</span><span class="p">):</span>
+    <span class="n">build_dir</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;sphinx_build_&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot; 📄 Temporary build directory: </span><span class="si">{</span><span class="n">build_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">build_dir</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">conf_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">conf_path</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot; 📄 sphinx_source: </span><span class="si">{</span><span class="n">sphinx_source</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot; 📄 conf_path: </span><span class="si">{</span><span class="n">conf_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot; 📄 build_dir: </span><span class="si">{</span><span class="n">build_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot; 📄 sphinx-build command: sphinx-build -b markdown -c </span><span class="si">{</span><span class="n">conf_dir</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">sphinx_source</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">build_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot; 📄 Running sphinx-build...&quot;</span><span class="p">)</span>
+
+    <span class="n">result</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+        <span class="p">[</span><span class="s2">&quot;sphinx-build&quot;</span><span class="p">,</span> <span class="s2">&quot;-b&quot;</span><span class="p">,</span> <span class="s2">&quot;markdown&quot;</span><span class="p">,</span> <span class="s2">&quot;-c&quot;</span><span class="p">,</span> <span class="n">conf_dir</span><span class="p">,</span> <span class="n">sphinx_source</span><span class="p">,</span> <span class="n">build_dir</span><span class="p">],</span>
+        <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">env</span><span class="o">=</span><span class="p">{</span><span class="o">**</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">,</span> <span class="s2">&quot;PYTHONPATH&quot;</span><span class="p">:</span> <span class="n">source_root</span> <span class="o">+</span> <span class="n">os</span><span class="o">.</span><span class="n">pathsep</span> <span class="o">+</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;PYTHONPATH&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)}</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">returncode</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot; 📄 sphinx-build failed with return code </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">returncode</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot; 📄 stdout:</span><span class="se">\n</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot; 📄 stderr:</span><span class="se">\n</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot; ✅ sphinx-build completed successfully.&quot;</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot; 📄 Files in build_dir after sphinx-build: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">build_dir</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">build_dir</span></div>
+
+
+
+<div class="viewcode-block" id="extract_toctree_order">
+<a class="viewcode-back" href="../../../api.html#contextmaker.converters.markdown_builder.extract_toctree_order">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">extract_toctree_order</span><span class="p">(</span><span class="n">index_path</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">index_path</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">lines</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot; 📄  Could not read </span><span class="si">{</span><span class="n">index_path</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">[]</span>
+
+    <span class="n">toctree_docs</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">in_toctree</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">:</span>
+        <span class="n">stripped</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">stripped</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;.. toctree::&quot;</span><span class="p">):</span>
+            <span class="n">in_toctree</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">in_toctree</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">stripped</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span> <span class="ow">or</span> <span class="n">stripped</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">):</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">stripped</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;.. &quot;</span><span class="p">):</span>  <span class="c1"># another directive</span>
+                <span class="k">break</span>
+            <span class="n">toctree_docs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">stripped</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Extracted toctree documents: </span><span class="si">{</span><span class="n">toctree_docs</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">toctree_docs</span></div>
+
+
+
+<div class="viewcode-block" id="combine_markdown">
+<a class="viewcode-back" href="../../../api.html#contextmaker.converters.markdown_builder.combine_markdown">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">combine_markdown</span><span class="p">(</span><span class="n">build_dir</span><span class="p">,</span> <span class="n">exclude</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">index_path</span><span class="p">,</span> <span class="n">library_name</span><span class="p">):</span>
+    <span class="n">md_files</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">build_dir</span><span class="p">,</span> <span class="s2">&quot;*.md&quot;</span><span class="p">))</span>
+    <span class="n">exclude_set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="si">}</span><span class="s2">.md&quot;</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">exclude</span> <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+
+    <span class="n">filtered</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">md_files</span> <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">f</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">exclude_set</span><span class="p">]</span>
+
+    <span class="n">index_md</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">others</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">filtered</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">f</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;index.md&quot;</span><span class="p">:</span>
+            <span class="n">index_md</span> <span class="o">=</span> <span class="n">f</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">others</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+
+    <span class="n">toctree_order</span> <span class="o">=</span> <span class="n">extract_toctree_order</span><span class="p">(</span><span class="n">index_path</span><span class="p">)</span> <span class="k">if</span> <span class="n">index_path</span> <span class="k">else</span> <span class="p">[]</span>
+    <span class="n">name_to_file</span> <span class="o">=</span> <span class="p">{</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">f</span><span class="p">))[</span><span class="mi">0</span><span class="p">]:</span> <span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">others</span><span class="p">}</span>
+    <span class="n">ordered</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">toctree_order</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">name_to_file</span><span class="p">:</span>
+            <span class="n">ordered</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name_to_file</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">doc</span><span class="p">))</span>
+
+    <span class="n">remaining</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">name_to_file</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+    <span class="n">ordered</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">remaining</span><span class="p">)</span>
+
+    <span class="n">final_order</span> <span class="o">=</span> <span class="p">([</span><span class="n">index_md</span><span class="p">]</span> <span class="k">if</span> <span class="n">index_md</span> <span class="k">else</span> <span class="p">[])</span> <span class="o">+</span> <span class="n">ordered</span>
+
+    <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">output</span><span class="p">),</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">out</span><span class="p">:</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;# - </span><span class="si">{</span><span class="n">library_name</span><span class="si">}</span><span class="s2"> | Complete Documentation -</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">f</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">final_order</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">---</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">section</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">f</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;## </span><span class="si">{</span><span class="n">section</span><span class="si">}</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">infile</span><span class="p">:</span>
+                <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">infile</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+                <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot; 📄 Combined markdown written to </span><span class="si">{</span><span class="n">output</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="convert_notebook">
+<a class="viewcode-back" href="../../../api.html#contextmaker.converters.markdown_builder.convert_notebook">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">convert_notebook</span><span class="p">(</span><span class="n">nb_path</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">shutil</span><span class="o">.</span><span class="n">which</span><span class="p">(</span><span class="s2">&quot;jupytext&quot;</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot; 📄 jupytext is required to convert notebooks.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="n">md_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">nb_path</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;.md&quot;</span>
+    <span class="n">cmd</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;jupytext&quot;</span><span class="p">,</span> <span class="s2">&quot;--to&quot;</span><span class="p">,</span> <span class="s2">&quot;md&quot;</span><span class="p">,</span> <span class="s2">&quot;--opt&quot;</span><span class="p">,</span> <span class="s2">&quot;notebook_metadata_filter=-all&quot;</span><span class="p">,</span> <span class="n">nb_path</span><span class="p">]</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot; 📄 Converting notebook </span><span class="si">{</span><span class="n">nb_path</span><span class="si">}</span><span class="s2"> to markdown...&quot;</span><span class="p">)</span>
+
+    <span class="n">result</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">returncode</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot; 📄 Failed to convert notebook:</span><span class="se">\n</span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">stderr</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">md_path</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot; 📄 Expected markdown file </span><span class="si">{</span><span class="n">md_path</span><span class="si">}</span><span class="s2"> not found after conversion.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot; ✅ Notebook converted to </span><span class="si">{</span><span class="n">md_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">md_path</span></div>
+
+
+
+<div class="viewcode-block" id="append_notebook_markdown">
+<a class="viewcode-back" href="../../../api.html#contextmaker.converters.markdown_builder.append_notebook_markdown">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">append_notebook_markdown</span><span class="p">(</span><span class="n">output_file</span><span class="p">,</span> <span class="n">notebook_md</span><span class="p">):</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">output_file</span><span class="p">,</span> <span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">out</span><span class="p">,</span> <span class="nb">open</span><span class="p">(</span><span class="n">notebook_md</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">nb_md</span><span class="p">:</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2"># Notebook</span><span class="se">\n\n</span><span class="s2">---</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">nb_md</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot; 📄 Appended notebook markdown from </span><span class="si">{</span><span class="n">notebook_md</span><span class="si">}</span><span class="s2"> to </span><span class="si">{</span><span class="n">output_file</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="main">
+<a class="viewcode-back" href="../../../api.html#contextmaker.converters.markdown_builder.main">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parse_args</span><span class="p">()</span>
+
+    <span class="n">exclude</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">exclude</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">exclude</span> <span class="k">else</span> <span class="p">[]</span>
+
+    <span class="n">sphinx_source</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">sphinx_source</span><span class="p">)</span>
+    <span class="n">conf_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">conf</span><span class="p">)</span> <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">conf</span> <span class="k">else</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">sphinx_source</span><span class="p">,</span> <span class="s2">&quot;conf.py&quot;</span><span class="p">)</span>
+    <span class="n">index_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">index</span><span class="p">)</span> <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">index</span> <span class="k">else</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">sphinx_source</span><span class="p">,</span> <span class="s2">&quot;index.rst&quot;</span><span class="p">)</span>
+    <span class="n">source_root</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">source_root</span><span class="p">)</span>
+    
+    <span class="n">library_name</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">library_name</span> <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">library_name</span> <span class="k">else</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">source_root</span><span class="p">)</span>
+
+    <span class="n">build_dir</span> <span class="o">=</span> <span class="n">build_markdown</span><span class="p">(</span><span class="n">sphinx_source</span><span class="p">,</span> <span class="n">conf_path</span><span class="p">,</span> <span class="n">source_root</span><span class="p">)</span>
+    <span class="n">combine_markdown</span><span class="p">(</span><span class="n">build_dir</span><span class="p">,</span> <span class="n">exclude</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">output</span><span class="p">,</span> <span class="n">index_path</span><span class="p">,</span> <span class="n">library_name</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">notebook</span><span class="p">:</span>
+        <span class="n">notebook_md</span> <span class="o">=</span> <span class="n">convert_notebook</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">notebook</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">notebook_md</span><span class="p">:</span>
+            <span class="n">append_notebook_markdown</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">output</span><span class="p">,</span> <span class="n">notebook_md</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot; ✅ Sphinx to Markdown conversion successful.&quot;</span><span class="p">)</span></div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Chadi Ait Ekioui.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
