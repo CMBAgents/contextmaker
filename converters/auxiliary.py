@@ -1,79 +1,150 @@
 import os
 import ast
+import glob
+import logging
+from typing import Optional
 
-def find_format(lib_path):
+logger = logging.getLogger(__name__)
+
+
+def find_format(lib_path: str) -> str:
     """
-    Find the format of a library.
+    Detect the documentation format of a given library.
+
+    Args:
+        lib_path (str): Path to the root of the library.
+
+    Returns:
+        str: One of ['sphinx', 'notebook', 'docstrings', 'source'].
+
+    Raises:
+        ValueError: If no valid format is detected.
     """
     if has_documentation(lib_path):
-        print("The library has documentation")
+        logger.info("📚 Detected Sphinx-style documentation.")
         return 'sphinx'
     elif has_notebook(lib_path):
-        print("The library has a notebook")
+        logger.info("📒 Detected Jupyter notebooks.")
         return 'notebook'
     elif has_docstrings(lib_path):
-        print("The library has docstrings")
+        logger.info("📄 Detected inline docstrings.")
         return 'docstrings'
     elif has_source(lib_path):
-       return 'source'
+        logger.info("💻 Detected raw source code.")
+        return 'source'
     else:
-        raise ValueError("The library is not a valid documentation library")
+        raise ValueError("❌ No valid documentation format detected.")
 
-def has_documentation(lib_path):
+
+def has_documentation(lib_path: str) -> bool:
     """
-    Check if the library has documentation (including notebooks)
+    Check if the library contains a Sphinx documentation folder.
+
+    Args:
+        lib_path (str): Path to the library.
+
+    Returns:
+        bool: True if Sphinx files exist, else False.
     """
-    # Check if the library has a documentation folder (contains conf.py and index.rst)
-    if os.path.exists(os.path.join(lib_path, 'docs')):
-        if os.path.exists(os.path.join(lib_path, 'docs', 'conf.py')) and os.path.exists(os.path.join(lib_path, 'docs', 'index.rst')):
-            return True
+    docs_path = os.path.join(lib_path, 'docs')
+    return (
+        os.path.exists(docs_path)
+        and os.path.isfile(os.path.join(docs_path, 'conf.py'))
+        and os.path.isfile(os.path.join(docs_path, 'index.rst'))
+    )
+
+
+def has_notebook(lib_path: str) -> bool:
+    """
+    Check if the library contains Jupyter notebooks.
+
+    Args:
+        lib_path (str): Path to the library.
+
+    Returns:
+        bool: True if at least one .ipynb file exists.
+    """
+    if has_documentation(lib_path):
+        return False
+
+    notebook_dir = os.path.join(lib_path, 'notebooks')
+    if os.path.exists(notebook_dir):
+        notebooks = glob.glob(os.path.join(notebook_dir, '*.ipynb'))
+        return len(notebooks) > 0
     return False
 
-def has_notebook(lib_path):
+
+def has_docstrings(file_path: str) -> bool:
     """
-    Check if the library has a notebook and no documentation.
+    Check if the Python file contains docstrings.
+
+    Args:
+        file_path (str): Path to a .py file.
+
+    Returns:
+        bool: True if at least one docstring is found.
     """
-    # Check if the library has a notebook folder (contains a *.ipynb file)
-    if not has_documentation(lib_path):
-        if os.path.exists(os.path.join(lib_path, 'notebooks')):
-            if os.path.exists(os.path.join(lib_path, 'notebooks', '*.ipynb')):
-                return True
-    return False
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            source = f.read()
+        tree = ast.parse(source, filename=file_path)
+    except Exception as e:
+        logger.warning(f"Failed to parse {file_path}: {e}")
+        return False
 
-
-def has_docstrings(file_path):
-    with open(file_path, "r") as f:
-        source = f.read()
-    tree = ast.parse(source, filename=file_path)
-
-    # Check module-level docstring
     if ast.get_docstring(tree):
         return True
 
-    # Check for class and function docstrings
     for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             if ast.get_docstring(node):
                 return True
     return False
 
-def has_source(lib_path):
+
+def has_source(lib_path: str) -> bool:
     """
-    Check if the library has source code.
+    Check if the library has source code but no other documentation.
+
+    Args:
+        lib_path (str): Path to the library.
+
+    Returns:
+        bool: True if only source code is found.
     """
-    if not has_documentation(lib_path):
-        if not has_notebook(lib_path):
-            if not has_docstrings(lib_path):
-                return True
+    if not has_documentation(lib_path) and not has_notebook(lib_path):
+        py_files = [
+            os.path.join(dp, f)
+            for dp, _, filenames in os.walk(lib_path)
+            for f in filenames if f.endswith('.py')
+        ]
+        return any(has_docstrings(fp) for fp in py_files) is False
     return False
 
-def convert_markdown_to_txt(output_path):
+
+def convert_markdown_to_txt(md_path: str, output_folder: Optional[str] = None) -> str:
     """
-    Convert a Markdown file to a txt file by copying its contents as-is.
+    Convert a Markdown file to a plain text file by copying its content.
+
+    Args:
+        md_path (str): Path to the markdown file.
+        output_folder (Optional[str]): Where to save the .txt file. Defaults to same folder.
+
+    Returns:
+        str: Path to the created .txt file.
     """
-    print(f"Converting markdown from {output_path}")
-    with open(output_path, 'r', encoding='utf-8') as md_file:
+    if not os.path.isfile(md_path):
+        logger.error(f"Markdown file does not exist: {md_path}")
+        raise FileNotFoundError(md_path)
+
+    with open(md_path, 'r', encoding='utf-8') as md_file:
         content = md_file.read()
-    with open(output_path, 'w', encoding='utf-8') as txt_file:
+
+    txt_filename = os.path.splitext(os.path.basename(md_path))[0] + '.txt'
+    txt_path = os.path.join(output_folder or os.path.dirname(md_path), txt_filename)
+
+    with open(txt_path, 'w', encoding='utf-8') as txt_file:
         txt_file.write(content)
-    return None
+
+    logger.info(f"✅ Markdown converted to text at: {txt_path}")
+    return txt_path
