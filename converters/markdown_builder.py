@@ -1,7 +1,19 @@
 #!/usr/bin/env python
 """
-Build Sphinx docs in Markdown, combine them into one file,
-optionally append a notebook converted to markdown.
+This script builds Sphinx documentation in Markdown format and combines it into a single file
+for use as context with Large Language Models (LLMs).
+
+It can be used:
+1. As a pre-build step in ReadTheDocs
+2. Locally to generate markdown documentation
+3. In CI/CD pipelines
+
+Usage:
+    python markdown_builder.py [--exclude file1,file2,...] [--output output_file] [--no-install]
+
+Options:
+    --exclude: Comma-separated list of files to exclude (without .md extension)
+    --output: Output file path
 """
 
 import argparse
@@ -9,22 +21,24 @@ import glob
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Build and combine Sphinx markdown docs")
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(description="Build Sphinx documentation in Markdown format for LLM context.")
     parser.add_argument(
         "--exclude",
         type=str,
         default="",
-        help="Comma-separated list of markdown files (without .md) to exclude",
+        help="Comma-separated list of files to exclude (without .md extension)",
     )
     parser.add_argument(
         "--output",
         type=str,
         required=True,
-        help="Output markdown file path",
+        help="Output file path",
     )
     parser.add_argument(
         "--sphinx-source",
@@ -52,8 +66,8 @@ def parse_args():
 
 
 def build_markdown(sphinx_source, conf_path):
-    # Create build directory in a temporary location
     build_dir = tempfile.mkdtemp(prefix="sphinx_build_")
+    print(f" 📚 build_dir: {build_dir}")
     os.makedirs(build_dir, exist_ok=True)
 
     # Create a temporary conf.py disabling intersphinx to avoid markdown build errors
@@ -69,6 +83,12 @@ def build_markdown(sphinx_source, conf_path):
 
     with open(temp_conf_path, "w", encoding="utf-8") as f:
         f.write(conf)
+
+    # Debug prints
+    print(f"sphinx_source: {sphinx_source}")
+    print(f"conf_path: {conf_path}")
+    print(f"build_dir: {build_dir}")
+    print(f"sphinx-build command: sphinx-build -b markdown -c {temp_conf_dir} {sphinx_source} {build_dir}")
 
     print("Running sphinx-build...")
     result = subprocess.run(
@@ -86,9 +106,12 @@ def build_markdown(sphinx_source, conf_path):
     )
 
     if result.returncode != 0:
-        print(f"Warning: sphinx-build failed with return code {result.returncode}")
+        print(f" ❌ Warning: sphinx-build failed with return code {result.returncode}")
         print("stdout:", result.stdout)
         print("stderr:", result.stderr)
+
+    # List files in build_dir after sphinx-build
+    print("Files in build_dir after sphinx-build:", os.listdir(build_dir))
 
     shutil.rmtree(temp_conf_dir)
     return build_dir
@@ -148,6 +171,7 @@ def combine_markdown(build_dir, exclude, output, index_path):
 
     final_order = ([index_md] if index_md else []) + ordered
 
+    os.makedirs(os.path.dirname(output), exist_ok=True)
     with open(output, "w", encoding="utf-8") as out:
         out.write("# Combined Documentation\n\n---\n\n")
         for f in final_order:
@@ -156,7 +180,6 @@ def combine_markdown(build_dir, exclude, output, index_path):
             with open(f, encoding="utf-8") as infile:
                 out.write(infile.read())
                 out.write("\n\n")
-
     print(f"Combined markdown written to {output}")
 
 
@@ -204,6 +227,5 @@ def main():
         if notebook_md:
             append_notebook_markdown(args.output, notebook_md)
 
-
-if __name__ == "__main__":
-    main()
+    if __name__ == "__main__":
+        sys.exit(main())

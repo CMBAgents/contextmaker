@@ -2,7 +2,6 @@ import subprocess
 import os
 import sys
 import logging
-from converters import auxiliary
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +28,7 @@ def convert_sphinx_docs_to_txt(input_path: str, output_path: str) -> bool:
         index_rst = os.path.join(candidate, "index.rst")
         if os.path.exists(conf_py) and os.path.exists(index_rst):
             sphinx_source = candidate
+            logger.info(f" 📚 Found sphinx source folder: {sphinx_source}")
             break
     if sphinx_source is None:
         logger.error(" ❌ No valid sphinx source folder found (conf.py and index.rst in docs/source or docs/)")
@@ -39,7 +39,12 @@ def convert_sphinx_docs_to_txt(input_path: str, output_path: str) -> bool:
 
     # Get absolute path to markdown_builder.py before changing directory
     markdown_builder_path = os.path.abspath("converters/markdown_builder.py")
-    
+    logger.info(f" 📚 markdown_builder_path: {markdown_builder_path}")
+
+    # Change to output_path directory to create build artifacts there
+    original_cwd = os.getcwd()
+    os.chdir(output_path)
+
     command = [
         sys.executable, markdown_builder_path,
         "--sphinx-source", sphinx_source,
@@ -50,18 +55,14 @@ def convert_sphinx_docs_to_txt(input_path: str, output_path: str) -> bool:
         command += ["--notebook", notebook_path]
 
     logger.info(f" 📚 Executing: {' '.join(command)}")
-
-    # Change to output_path directory to create build artifacts there
-    original_cwd = os.getcwd()
-    os.chdir(output_path)
     
     try:
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         logger.info(" ✅ Sphinx to Markdown conversion successful.")
         if result.stdout:
-            logger.debug(f"STDOUT:\n{result.stdout}")
+            logger.info(f"markdown_builder.py STDOUT:\n{result.stdout}")
         if result.stderr.strip():
-            logger.warning(f"STDERR (warnings):\n{result.stderr}")
+            logger.error(f"markdown_builder.py STDERR:\n{result.stderr}")
 
     except subprocess.CalledProcessError as e:
         logger.error(" ❌ markdown_builder.py failed.")
@@ -72,7 +73,10 @@ def convert_sphinx_docs_to_txt(input_path: str, output_path: str) -> bool:
     finally:
         # Restore original working directory
         os.chdir(original_cwd)
+    return True
 
+#TODO : add the md to txt
+"""
     # Optional markdown to txt
     if os.path.exists(markdown_output):
         txt_output_path = auxiliary.convert_markdown_to_txt(output_path)
@@ -81,3 +85,4 @@ def convert_sphinx_docs_to_txt(input_path: str, output_path: str) -> bool:
     else:
         logger.warning(f"Markdown file not found at expected path: {markdown_output}")
         return False
+"""
