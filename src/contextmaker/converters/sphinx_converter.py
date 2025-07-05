@@ -18,10 +18,12 @@ def convert_sphinx_docs_to_txt(input_path: str, output_path: str) -> bool:
     Returns:
         bool: True if the process succeeded, False otherwise.
     """
-    # Search for the sphinx source folder docs/source then docs/
+    # Search for the sphinx source folder in multiple possible locations
     possible_sources = [
-        os.path.join(input_path, "docs", "source"),
-        os.path.join(input_path, "docs")
+        os.path.join(input_path, "docs", "source"),  # docs/source
+        os.path.join(input_path, "docs"),            # docs
+        os.path.join(input_path, "doc", "source"),   # doc/source
+        os.path.join(input_path, "doc")              # doc
     ]
     sphinx_source = None
     for candidate in possible_sources:
@@ -32,7 +34,7 @@ def convert_sphinx_docs_to_txt(input_path: str, output_path: str) -> bool:
             logger.info(f" 📚 Found sphinx source folder: {sphinx_source}")
             break
     if sphinx_source is None:
-        logger.error(" ❌ No valid sphinx source folder found (conf.py and index.rst in docs/source or docs/)")
+        logger.error(" ❌ No valid sphinx source folder found (conf.py and index.rst in docs/source, docs, doc/source, or doc/)")
         return False
 
     markdown_output = os.path.join(output_path, "output.md")

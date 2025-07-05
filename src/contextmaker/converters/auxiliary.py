@@ -45,10 +45,12 @@ def has_documentation(lib_path: str) -> bool:
     Returns:
         bool: True if Sphinx files exist, else False.
     """
-    # Check for docs/source first (more common), then docs/
+    # Check for all possible Sphinx documentation locations
     possible_sources = [
-        os.path.join(lib_path, "docs", "source"),
-        os.path.join(lib_path, "docs")
+        os.path.join(lib_path, "docs", "source"),  # docs/source
+        os.path.join(lib_path, "docs"),            # docs
+        os.path.join(lib_path, "doc", "source"),   # doc/source
+        os.path.join(lib_path, "doc")              # doc
     ]
     
     for candidate in possible_sources:
