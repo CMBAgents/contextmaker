@@ -186,6 +186,15 @@ def build_html_and_convert_to_text(sphinx_source, conf_path, source_root, output
         logger.error(" 📄 sphinx-build (HTML) failed with return code %s", result.returncode)
         logger.error(" 📄 stdout:\n%s", result.stdout)
         logger.error(" 📄 stderr:\n%s", result.stderr)
+        
+        # Check for common error patterns and provide helpful messages
+        stderr_lower = result.stderr.lower()
+        if "circular import" in stderr_lower or "partially initialized module" in stderr_lower:
+            logger.error(" 📄 This appears to be a circular import issue. This is common with complex libraries like numpy.")
+            logger.error(" 📄 The library may need to be properly installed or the documentation may have dependency issues.")
+        elif "import error" in stderr_lower:
+            logger.error(" 📄 Import error detected. The library may have missing dependencies for documentation building.")
+        
         return False
     else:
         logger.info(" ✅ sphinx-build (HTML) completed successfully.")

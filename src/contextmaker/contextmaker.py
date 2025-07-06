@@ -92,10 +92,15 @@ def main():
                 conf_path = os.path.join(sphinx_source, "conf.py")
                 output_file = os.path.join(output_path, f"{args.library_name}.txt")
                 success = build_html_and_convert_to_text(sphinx_source, conf_path, input_path, output_file)
+                
+                # If sphinx build fails, fallback to docstring extraction
+                if not success:
+                    logger.warning(" ⚠️ Sphinx build failed. Falling back to docstring extraction from source code...")
+                    success = nonsphinx_converter.create_final_markdown(input_path, output_path, args.library_name)
             else:
                 success = False
         else:
-            success = nonsphinx_converter.create_final_markdown(input_path, output_path)
+            success = nonsphinx_converter.create_final_markdown(input_path, output_path, args.library_name)
         
         if success:
             logger.info(f" ✅ Conversion completed successfully. Output: {output_file if doc_format == 'sphinx' else output_path}")
