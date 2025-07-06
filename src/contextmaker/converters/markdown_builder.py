@@ -194,8 +194,15 @@ def build_html_and_convert_to_text(sphinx_source, conf_path, source_root, output
 
     # Convert all HTML files to text and concatenate
     html_files = sorted(glob.glob(os.path.join(build_dir, "*.html")))
+    
+    # Ensure output directory exists
+    os.makedirs(os.path.dirname(output), exist_ok=True)
+    
+    # Extract library name from output path
+    library_name = os.path.splitext(os.path.basename(output))[0]
+    
     with open(output, "w", encoding="utf-8") as out:
-        out.write(f"# - Complete Documentation (HTML to Text) -\n\n")
+        out.write(f"# - Complete Documentation | {library_name} -\n\n")
         for html_file in html_files:
             section = os.path.splitext(os.path.basename(html_file))[0]
             out.write(f"## {section}\n\n")
