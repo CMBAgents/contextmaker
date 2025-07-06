@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import html2text
 
 # Configure logging
 logging.basicConfig(
@@ -31,6 +32,7 @@ def parse_args():
     parser.add_argument("--notebook", type=str, default=None, help="Path to notebook to convert and append")
     parser.add_argument("--source-root", type=str, required=True, help="Absolute path to the root of the source code to add to sys.path for Sphinx autodoc.")
     parser.add_argument("--library-name", type=str, default=None, help="Name of the library for the documentation title.")
+    parser.add_argument("--html-to-text", action="store_true", help="Build Sphinx HTML and convert to text instead of Markdown.")
     return parser.parse_args()
 
 
@@ -161,6 +163,51 @@ def append_notebook_markdown(output_file, notebook_md):
     logger.info(f" 📄 Appended notebook markdown from {notebook_md} to {output_file}")
 
 
+def build_html_and_convert_to_text(sphinx_source, conf_path, source_root, output):
+    build_dir = tempfile.mkdtemp(prefix="sphinx_html_build_")
+    logger.info(f" 📄 Temporary HTML build directory: {build_dir}")
+    os.makedirs(build_dir, exist_ok=True)
+    conf_dir = os.path.dirname(conf_path)
+
+    logger.info(f" 📄 sphinx_source: {sphinx_source}")
+    logger.info(f" 📄 conf_path: {conf_path}")
+    logger.info(f" 📄 build_dir: {build_dir}")
+    logger.info(f" 📄 sphinx-build command: sphinx-build -b html -c {conf_dir} {sphinx_source} {build_dir}")
+    logger.info(" 📄 Running sphinx-build (HTML)...")
+
+    result = subprocess.run(
+        ["sphinx-build", "-b", "html", "-c", conf_dir, sphinx_source, build_dir],
+        capture_output=True,
+        text=True,
+        env={**os.environ, "PYTHONPATH": source_root + os.pathsep + os.environ.get("PYTHONPATH", "")}
+    )
+
+    if result.returncode != 0:
+        logger.error(" 📄 sphinx-build (HTML) failed with return code %s", result.returncode)
+        logger.error(" 📄 stdout:\n%s", result.stdout)
+        logger.error(" 📄 stderr:\n%s", result.stderr)
+        return False
+    else:
+        logger.info(" ✅ sphinx-build (HTML) completed successfully.")
+
+    logger.info(" 📄 Files in build_dir after sphinx-build (HTML): %s", os.listdir(build_dir))
+
+    # Convert all HTML files to text and concatenate
+    html_files = sorted(glob.glob(os.path.join(build_dir, "*.html")))
+    with open(output, "w", encoding="utf-8") as out:
+        out.write(f"# - Complete Documentation (HTML to Text) -\n\n")
+        for html_file in html_files:
+            section = os.path.splitext(os.path.basename(html_file))[0]
+            out.write(f"## {section}\n\n")
+            with open(html_file, "r", encoding="utf-8") as f:
+                html = f.read()
+            text = html2text.html2text(html)
+            out.write(text)
+            out.write("\n\n---\n\n")
+    logger.info(f" 📄 Combined HTML-to-text written to {output}")
+    return True
+
+
 def main():
     args = parse_args()
 
@@ -172,6 +219,12 @@ def main():
     source_root = os.path.abspath(args.source_root)
     
     library_name = args.library_name if args.library_name else os.path.basename(source_root)
+
+    # Nouveau mode : HTML -> texte
+    if hasattr(args, 'html_to_text') and args.html_to_text:
+        build_html_and_convert_to_text(sphinx_source, conf_path, source_root, args.output)
+        logger.info(" ✅ Sphinx HTML to text conversion successful.")
+        return
 
     build_dir = build_markdown(sphinx_source, conf_path, source_root)
     combine_markdown(build_dir, exclude, args.output, index_path, library_name)

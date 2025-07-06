@@ -1,9 +1,10 @@
 import subprocess
 import os
+import sys
 import ast
 import shutil
 import logging
-from converters import auxiliary
+from contextmaker.converters import auxiliary
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)

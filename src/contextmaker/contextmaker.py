@@ -14,7 +14,7 @@ import argparse
 import os
 import sys
 import logging
-from converters import sphinx_converter, nonsphinx_converter, auxiliary
+from contextmaker.converters import sphinx_converter, nonsphinx_converter, auxiliary
 
 # Set up the logger
 logging.basicConfig(
