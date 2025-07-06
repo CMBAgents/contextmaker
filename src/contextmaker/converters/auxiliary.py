@@ -32,18 +32,20 @@ def find_format(lib_path: str) -> str:
         logger.info(" 💻 Detected raw source code.")
         return 'source'
     else:
-        raise ValueError("❌ No valid documentation format detected.")
+        # For installed packages without documentation, try to extract docstrings from source
+        logger.info(" 📦 Detected installed package, extracting docstrings from source code.")
+        return 'docstrings'
 
 
-def has_documentation(lib_path: str) -> bool:
+def find_sphinx_source(lib_path: str) -> str | None:
     """
-    Check if the library contains a Sphinx documentation folder.
+    Find the Sphinx documentation source directory.
 
     Args:
         lib_path (str): Path to the library.
 
     Returns:
-        bool: True if Sphinx files exist, else False.
+        str: Path to the Sphinx source directory, or None if not found.
     """
     # Check for all possible Sphinx documentation locations
     possible_sources = [
@@ -57,9 +59,22 @@ def has_documentation(lib_path: str) -> bool:
         conf_py = os.path.join(candidate, "conf.py")
         index_rst = os.path.join(candidate, "index.rst")
         if os.path.exists(conf_py) and os.path.exists(index_rst):
-            return True
+            return candidate
     
-    return False
+    return None
+
+
+def has_documentation(lib_path: str) -> bool:
+    """
+    Check if the library contains a Sphinx documentation folder.
+
+    Args:
+        lib_path (str): Path to the library.
+
+    Returns:
+        bool: True if Sphinx files exist, else False.
+    """
+    return find_sphinx_source(lib_path) is not None
 
 
 def has_notebook(lib_path: str) -> bool:
@@ -128,6 +143,107 @@ def has_source(lib_path: str) -> bool:
         ]
         return any(has_docstrings(fp) for fp in py_files) is False
     return False
+
+
+def find_library_path(library_name: str) -> str | None:
+    """
+    Find the library path by searching in common locations, but only if it contains Sphinx documentation (doc/ or docs/ with conf.py and index.rst).
+    
+    Args:
+        library_name (str): Name of the library to find.
+        
+    Returns:
+        str | None: Path to the library if found, None otherwise.
+    """
+    import site
+    import sys
+    
+    # Common search paths
+    search_paths = []
+    
+    # 1. Current working directory and subdirectories
+    search_paths.append(os.getcwd())
+    
+    # 2. User's home directory and common subdirectories
+    home = os.path.expanduser("~")
+    search_paths.extend([
+        home,
+        os.path.join(home, "Documents"),
+        os.path.join(home, "Downloads"),
+        os.path.join(home, "Desktop"),
+        os.path.join(home, "Projects"),
+        os.path.join(home, "repos"),
+        os.path.join(home, "workspace"),
+        os.path.join(home, "code"),
+    ])
+    
+    # 3. Python site-packages directories
+    for site_dir in site.getsitepackages():
+        search_paths.append(site_dir)
+    
+    # 4. User site-packages
+    user_site = site.getusersitepackages()
+    if user_site:
+        search_paths.append(user_site)
+    
+    # 5. Virtual environment site-packages (if in a venv)
+    if hasattr(sys, 'real_prefix') or (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix):
+        venv_site = os.path.join(sys.prefix, 'lib', 'python*', 'site-packages')
+        search_paths.extend(glob.glob(venv_site))
+    
+    # 6. Conda environments
+    conda_prefix = os.environ.get('CONDA_PREFIX')
+    if conda_prefix:
+        conda_site = os.path.join(conda_prefix, 'lib', 'python*', 'site-packages')
+        search_paths.extend(glob.glob(conda_site))
+    
+    # Helper to check for Sphinx doc
+    def has_sphinx_doc(lib_path: str) -> str | None:
+        for doc_folder in ["docs", "doc"]:
+            candidate = os.path.join(lib_path, doc_folder)
+            conf_py = os.path.join(candidate, "conf.py")
+            index_rst = os.path.join(candidate, "index.rst")
+            if os.path.exists(conf_py) and os.path.exists(index_rst):
+                return candidate
+        return None
+    
+    # Search for the library
+    for search_path in search_paths:
+        if not os.path.exists(search_path):
+            continue
+            
+        # Look for exact match first
+        exact_path = os.path.join(search_path, library_name)
+        if os.path.exists(exact_path):
+            doc_path = has_sphinx_doc(exact_path)
+            if doc_path:
+                logger.info(f"✅ Found library '{library_name}' with Sphinx docs at: {exact_path}")
+                return exact_path
+        
+        # Look in subdirectories
+        for root, dirs, files in os.walk(search_path):
+            for dir_name in dirs:
+                if dir_name.lower() == library_name.lower():
+                    full_path = os.path.join(root, dir_name)
+                    doc_path = has_sphinx_doc(full_path)
+                    if doc_path:
+                        logger.info(f"✅ Found library '{library_name}' with Sphinx docs at: {full_path}")
+                        return full_path
+    
+    logger.error(f"❌ Library '{library_name}' with Sphinx documentation not found in common locations")
+    return None
+
+
+def get_default_output_path() -> str:
+    """
+    Get the default output path in user's home directory.
+    
+    Returns:
+        str: Default output path.
+    """
+    home = os.path.expanduser("~")
+    default_path = os.path.join(home, "your_context_library")
+    return default_path
 
 
 def convert_markdown_to_txt(output_folder: str, library_name: str) -> str:

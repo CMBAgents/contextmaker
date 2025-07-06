@@ -17,6 +17,7 @@ dependencies = [
     "markdownify",
     "rich",
     "beautifulsoup4",
+    "html2text",
 ]
 
 [project.optional-dependencies]

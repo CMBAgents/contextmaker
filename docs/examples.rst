@@ -3,11 +3,50 @@ Examples
 
 This section provides practical examples of how to use ContextMaker for different scenarios.
 
+Simple Usage Examples
+--------------------
+
+Example 1: Convert pixell documentation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: bash
+
+   # 1. Clone pixell (if not already done)
+   git clone https://github.com/simonsobs/pixell.git ~/Documents/GitHub/pixell
+
+   # 2. Generate documentation
+   contextmaker pixell
+
+   # 3. Result: ~/your_context_library/pixell.txt
+
+Example 2: Convert numpy documentation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: bash
+
+   # 1. Clone numpy
+   git clone https://github.com/numpy/numpy.git ~/Documents/GitHub/numpy
+
+   # 2. Generate documentation
+   contextmaker numpy
+
+   # 3. Result: ~/your_context_library/numpy.txt
+
+Example 3: Custom output location
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: bash
+
+   # Generate documentation in custom location
+   contextmaker pixell --output ~/Documents/my_documentation
+
+   # Result: ~/Documents/my_documentation/pixell.txt
+
 Converting Sphinx Documentation
 ------------------------------
 
-Example 1: Basic Sphinx Project
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Example 4: Manual path specification
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For a typical Sphinx project structure:
 
@@ -23,24 +62,23 @@ For a typical Sphinx project structure:
 
 .. code-block:: bash
 
-   python -m contextmaker.contextmaker \
-     --input_path /path/to/myproject \
-     --output_path ./converted_docs
+   # Automatic search (if found in common locations)
+   contextmaker myproject
 
-Example 2: Sphinx with Custom Configuration
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   # Manual path specification
+   contextmaker myproject --input_path /path/to/myproject
+
+Example 5: Sphinx with custom configuration
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
-   python -m contextmaker.contextmaker \
-     --input_path /path/to/myproject/docs \
-     --output_path ./converted_docs \
-     --library-name "MyScientificLibrary"
+   contextmaker myproject --input_path /path/to/myproject/docs --output ./custom_output
 
 Converting Jupyter Notebooks
 ---------------------------
 
-Example 3: Notebook Collection
+Example 6: Notebook collection
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For a collection of Jupyter notebooks:
@@ -54,14 +92,12 @@ For a collection of Jupyter notebooks:
 
 .. code-block:: bash
 
-   python -m contextmaker.contextmaker \
-     --input_path ./notebooks \
-     --output_path ./converted_docs
+   contextmaker myproject --input_path ./notebooks
 
 Converting Source Code
 ---------------------
 
-Example 4: Python Package with Docstrings
+Example 7: Python package with docstrings
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For a Python package with comprehensive docstrings:
@@ -77,14 +113,12 @@ For a Python package with comprehensive docstrings:
 
 .. code-block:: bash
 
-   python -m contextmaker.contextmaker \
-     --input_path ./mypackage \
-     --output_path ./converted_docs
+   contextmaker mypackage --input_path ./mypackage
 
 Converting Mixed Content
 -----------------------
 
-Example 5: Project with Multiple Documentation Types
+Example 8: Project with multiple documentation types
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For a project with various documentation sources:
@@ -103,41 +137,56 @@ For a project with various documentation sources:
 
 .. code-block:: bash
 
+   contextmaker scientific_project --input_path ./scientific_project
+
+Advanced Usage Examples
+----------------------
+
+Example 9: Direct module usage
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: bash
+
+   # Use the module directly
+   python -m contextmaker.contextmaker pixell
+
+Example 10: Manual Sphinx conversion with HTML->text
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: bash
+
+   python src/contextmaker/converters/markdown_builder.py \
+     --sphinx-source /path/to/project/docs \
+     --output ./output.txt \
+     --source-root /path/to/project/src \
+     --html-to-text
+
+Legacy Interface Examples
+------------------------
+
+Example 11: Legacy command line interface
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: bash
+
    python -m contextmaker.contextmaker \
-     --input_path ./scientific_project \
+     --input_path /path/to/myproject \
      --output_path ./converted_docs
 
-Using the Markdown Builder Directly
----------------------------------
-
-Example 6: Custom Sphinx to Markdown Conversion
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Example 12: Legacy with library name
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
-   python converters/markdown_builder.py \
-     --sphinx-source /path/to/project/docs \
-     --output ./output.md \
-     --source-root /path/to/project/src \
-     --library-name "MyLibrary" \
-     --exclude "internal,private"
-
-Example 7: Including Notebooks in Sphinx Build
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: bash
-
-   python converters/markdown_builder.py \
-     --sphinx-source /path/to/project/docs \
-     --output ./output.md \
-     --source-root /path/to/project/src \
-     --notebook /path/to/project/notebooks/tutorial.ipynb
+   python -m contextmaker.contextmaker \
+     --input_path /path/to/myproject/docs \
+     --output_path ./converted_docs
 
 Python API Examples
 ------------------
 
-Example 8: Programmatic Usage
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Example 13: Programmatic usage
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: python
 
@@ -147,16 +196,15 @@ Example 8: Programmatic Usage
    # Set up arguments programmatically
    sys.argv = [
        'contextmaker',
-       '--input_path', '/path/to/myproject',
-       '--output_path', './converted_docs',
-       '--library-name', 'MyProject'
+       'pixell',
+       '--output', './my_output'
    ]
 
    # Run conversion
    main()
 
-Example 9: Using Individual Converters
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Example 14: Using individual converters
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: python
 
@@ -169,15 +217,17 @@ Example 9: Using Individual Converters
    # Convert other formats
    create_final_markdown('/path/to/source', './output')
 
-Example 10: Custom Markdown Processing
+Example 15: Custom markdown processing
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: python
 
-   from contextmaker.converters.markdown_builder import build_markdown, combine_markdown
+   from contextmaker.converters.markdown_builder import build_html_and_convert_to_text
 
-   # Build markdown from Sphinx
-   build_dir = build_markdown('/path/to/docs', '/path/to/docs/conf.py', '/path/to/src')
-
-   # Combine markdown files
-   combine_markdown(build_dir, [], './output.md', '/path/to/docs/index.rst', 'MyLibrary') 
+   # Build HTML and convert to text
+   success = build_html_and_convert_to_text(
+       '/path/to/docs', 
+       '/path/to/docs/conf.py', 
+       '/path/to/src', 
+       './output.txt'
+   ) 

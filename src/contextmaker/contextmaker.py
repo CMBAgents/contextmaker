@@ -14,7 +14,7 @@ import argparse
 import os
 import sys
 import logging
-from contextmaker.converters import sphinx_converter, nonsphinx_converter, auxiliary
+from contextmaker.converters import nonsphinx_converter, auxiliary
 
 # Set up the logger
 logging.basicConfig(
@@ -33,18 +33,39 @@ def parse_args():
     Parse command line arguments.
     """
     parser = argparse.ArgumentParser(
-        description="Convert library docs (Sphinx, Markdown, Notebooks, source) to CMBAgent text format"
+        description="Convert library documentation to text format. Automatically finds libraries on your system."
     )
-    parser.add_argument('--input_path', '-i', required=True, help='Path to the library documentation folder')
-    parser.add_argument('--output_path', '-o', required=True, help='Path to the output folder for converted files')
+    parser.add_argument('library_name', help='Name of the library to convert (e.g., "pixell", "numpy")')
+    parser.add_argument('--output', '-o', help='Output path (default: ~/contextmaker_output/)')
+    parser.add_argument('--input_path', '-i', help='Manual path to library (overrides automatic search)')
     return parser.parse_args()
 
 
 def main():
     try:
         args = parse_args()
-        input_path = os.path.abspath(args.input_path)
-        output_path = os.path.abspath(args.output_path)
+        
+        # Determine input path
+        if args.input_path:
+            # Manual path provided
+            input_path = os.path.abspath(args.input_path)
+            logger.info(f"📁 Using manual path: {input_path}")
+        else:
+            # Automatic search
+            logger.info(f"🔍 Searching for library '{args.library_name}'...")
+            input_path = auxiliary.find_library_path(args.library_name)
+            if not input_path:
+                logger.error(f"❌ Library '{args.library_name}' not found. Try specifying the path manually with --input_path")
+                sys.exit(1)
+        
+        # Determine output path
+        if args.output:
+            output_path = os.path.abspath(args.output)
+        else:
+            output_path = auxiliary.get_default_output_path()
+        
+        logger.info(f"📁 Input path: {input_path}")
+        logger.info(f"📁 Output path: {output_path}")
 
         if not os.path.exists(input_path):
             logger.error(f"Input path '{input_path}' does not exist.")
@@ -60,12 +81,20 @@ def main():
         logger.info(f" 📚 Detected documentation format: {doc_format}")
 
         if doc_format == 'sphinx':
-            success = sphinx_converter.convert_sphinx_docs_to_txt(input_path, output_path)
+            # Always use the HTML->text workflow for complete documentation
+            from contextmaker.converters.markdown_builder import build_html_and_convert_to_text
+            sphinx_source = auxiliary.find_sphinx_source(input_path)
+            if sphinx_source:
+                conf_path = os.path.join(sphinx_source, "conf.py")
+                output_file = os.path.join(output_path, f"{args.library_name}.txt")
+                success = build_html_and_convert_to_text(sphinx_source, conf_path, input_path, output_file)
+            else:
+                success = False
         else:
             success = nonsphinx_converter.create_final_markdown(input_path, output_path)
-        #TODO : add the md to txt
+        
         if success:
-            logger.info(" ✅ Conversion completed successfully.")
+            logger.info(f" ✅ Conversion completed successfully. Output: {output_file if doc_format == 'sphinx' else output_path}")
         else:
             logger.warning(" ⚠️ Conversion completed with warnings or partial results.")
 
