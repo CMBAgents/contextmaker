@@ -2,6 +2,10 @@
 Context_Maker: A tool to convert library documentation into a format optimized for ingestion by CMBAgent.
 
 Usage:
+    contextmaker <library_name>
+    or
+    contextmaker pixell --input_path /path/to/library/source
+    or
     python contextmaker/contextmaker.py --i <path_to_library> --o <path_to_output_folder>
 
 Notes:
