@@ -88,6 +88,9 @@ def combine_markdown_files_to_txt(temp_output_path, output_path, library_name):
     h2t.ignore_links = True
     h2t.body_width = 0
     with open(combined_file_path, "w", encoding="utf-8") as combined_file:
+        # Add the global title like in the Sphinx converter
+        combined_file.write(f"# - Complete Documentation | {library_name} -\n\n")
+        
         for file in sorted(os.listdir(temp_output_path)):
             if file.endswith((".md", ".txt")):
                 file_path = os.path.join(temp_output_path, file)

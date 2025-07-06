@@ -197,14 +197,13 @@ def find_library_path(library_name: str) -> str | None:
         conda_site = os.path.join(conda_prefix, 'lib', 'python*', 'site-packages')
         search_paths.extend(glob.glob(conda_site))
     
-    # Helper to check for Sphinx doc
+    # Helper to check for Sphinx doc - use the existing find_sphinx_source function
     def has_sphinx_doc(lib_path: str) -> str | None:
-        for doc_folder in ["docs", "doc"]:
-            candidate = os.path.join(lib_path, doc_folder)
-            conf_py = os.path.join(candidate, "conf.py")
-            index_rst = os.path.join(candidate, "index.rst")
-            if os.path.exists(conf_py) and os.path.exists(index_rst):
-                return candidate
+        sphinx_source = find_sphinx_source(lib_path)
+        if sphinx_source:
+            logger.debug(f"✅ Sphinx docs found in: {sphinx_source}")
+            return sphinx_source
+        logger.debug(f"❌ No Sphinx docs found in: {lib_path}")
         return None
     
     # Search for the library
@@ -212,23 +211,31 @@ def find_library_path(library_name: str) -> str | None:
         if not os.path.exists(search_path):
             continue
             
+        logger.debug(f"🔍 Searching in: {search_path}")
+        
         # Look for exact match first
         exact_path = os.path.join(search_path, library_name)
         if os.path.exists(exact_path):
+            logger.debug(f"📁 Found exact match: {exact_path}")
             doc_path = has_sphinx_doc(exact_path)
             if doc_path:
                 logger.info(f"✅ Found library '{library_name}' with Sphinx docs at: {exact_path}")
                 return exact_path
+            else:
+                logger.debug(f"❌ No Sphinx docs found in: {exact_path}")
         
         # Look in subdirectories
         for root, dirs, files in os.walk(search_path):
             for dir_name in dirs:
                 if dir_name.lower() == library_name.lower():
                     full_path = os.path.join(root, dir_name)
+                    logger.debug(f"📁 Found subdirectory match: {full_path}")
                     doc_path = has_sphinx_doc(full_path)
                     if doc_path:
                         logger.info(f"✅ Found library '{library_name}' with Sphinx docs at: {full_path}")
                         return full_path
+                    else:
+                        logger.debug(f"❌ No Sphinx docs found in: {full_path}")
     
     logger.error(f"❌ Library '{library_name}' with Sphinx documentation not found in common locations")
     return None
