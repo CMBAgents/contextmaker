@@ -1,0 +1,15 @@
+# Core dependencies for contextmaker
+sphinx>=5.0.0
+jupytext>=1.14.0
+sphinx-rtd-theme>=1.0.0
+myst-parser>=1.0.0
+sphinx-markdown-builder>=0.6.5
+markdownify
+rich
+beautifulsoup4
+html2text
+
+# Optional development dependencies
+# pytest
+# black
+# sphinx-autobuild
