@@ -112,5 +112,81 @@ def main():
         sys.exit(1)
 
 
+def convert(library_name, output_path=None, input_path=None):
+    """
+    Convert a library's documentation to text format (programmatic API).
+
+    Args:
+        library_name (str): Name of the library to convert (e.g., "pixell", "numpy").
+        output_path (str, optional): Output directory. Defaults to ~/your_context_library/.
+        input_path (str, optional): Manual path to library (overrides automatic search).
+
+    Returns:
+        str: Path to the generated documentation file, or None if failed.
+    """
+    try:
+        # Determine input path
+        if input_path:
+            input_path = os.path.abspath(input_path)
+            logger.info(f"📁 Using manual path: {input_path}")
+        else:
+            logger.info(f"🔍 Searching for library '{library_name}'...")
+            input_path = auxiliary.find_library_path(library_name)
+            if not input_path:
+                logger.error(f"❌ Library '{library_name}' not found. Try specifying the path manually with input_path.")
+                return None
+
+        # Determine output path
+        if output_path:
+            output_path = os.path.abspath(output_path)
+        else:
+            output_path = auxiliary.get_default_output_path()
+
+        logger.info(f"📁 Input path: {input_path}")
+        logger.info(f"📁 Output path: {output_path}")
+
+        if not os.path.exists(input_path):
+            logger.error(f"Input path '{input_path}' does not exist.")
+            return None
+
+        if not os.listdir(input_path):
+            logger.error(f"Input path '{input_path}' is empty.")
+            return None
+
+        os.makedirs(output_path, exist_ok=True)
+
+        doc_format = auxiliary.find_format(input_path)
+        logger.info(f" 📚 Detected documentation format: {doc_format}")
+
+        if doc_format == 'sphinx':
+            from contextmaker.converters.markdown_builder import build_html_and_convert_to_text
+            sphinx_source = auxiliary.find_sphinx_source(input_path)
+            if sphinx_source:
+                conf_path = os.path.join(sphinx_source, "conf.py")
+                output_file = os.path.join(output_path, f"{library_name}.txt")
+                success = build_html_and_convert_to_text(sphinx_source, conf_path, input_path, output_file)
+                if not success:
+                    logger.warning(" ⚠️ Sphinx build failed. Falling back to docstring extraction from source code...")
+                    success = nonsphinx_converter.create_final_markdown(input_path, output_path, library_name)
+                    output_file = os.path.join(output_path, f"{library_name}.txt")
+            else:
+                success = False
+                output_file = None
+        else:
+            success = nonsphinx_converter.create_final_markdown(input_path, output_path, library_name)
+            output_file = os.path.join(output_path, f"{library_name}.txt")
+
+        if success:
+            logger.info(f" ✅ Conversion completed successfully. Output: {output_file}")
+            return output_file
+        else:
+            logger.warning(" ⚠️ Conversion completed with warnings or partial results.")
+            return None
+
+    except Exception as e:
+        logger.exception(f" ❌ An unexpected error occurred: {e}")
+        raise
+
+
 if __name__ == "__main__":
     main()

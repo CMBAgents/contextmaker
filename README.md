@@ -11,34 +11,19 @@ This project uses the [CAMB](https://camb.info/) code developed by Antony Lewis 
 
 ---
 
-## Strategy
-
-ContextMaker is designed to convert any scientific or software library documentation into a clean, standardized text format optimized for ingestion by CMBAgent.
-It handles multiple input formats including Sphinx documentation, Markdown files, Jupyter notebooks, and source code with embedded docstrings.
-When documentation is missing, ContextMaker can auto-generate basic API docs directly from the source code.
-This makes it a versatile tool to prepare heterogeneous documentation sources into a consistent knowledge base for AI agents specialized in scientific research.
-
----
-
 ## Installation
 
-Clone the repository and install in editable mode:
+Install ContextMaker from PyPI:
 
 ```bash
-git clone https://github.com/chadiaitekioui/contextmaker
-cd contextmaker
-python3 -m venv contextmaker_env
-source contextmaker_env/bin/activate
-pip install -e .
+pip install contextmaker
 ```
-
-You can now use ContextMaker from the command line.
 
 ---
 
 ## Usage
 
-### Simple Command Line Interface
+### From the Command Line
 
 ContextMaker automatically finds libraries on your system and generates complete documentation with function signatures and docstrings.
 
@@ -53,7 +38,7 @@ contextmaker pixell
 contextmaker numpy
 ```
 
-### Advanced Usage
+#### Advanced Usage
 
 ```bash
 # Specify custom output path
@@ -63,11 +48,32 @@ contextmaker pixell --output ~/Documents/my_docs
 contextmaker pixell --input_path /path/to/library/source
 ```
 
-### Output
+#### Output
 
 - **Default location:** `~/your_context_library/library_name.txt`
 - **Content:** Complete documentation with function signatures, docstrings, examples, and API references
 - **Format:** Clean text optimized for AI agent ingestion
+
+---
+
+### From a Python Script
+
+You can also use ContextMaker programmatically in your Python scripts:
+
+```python
+from contextmaker.contextmaker import convert
+
+# Minimal usage (automatic search, default output path)
+convert("pixell")
+
+# With custom output path
+convert("pixell", output_path="/tmp")
+
+# With manual input path
+convert("pixell", input_path="/path/to/pixell/source")
+```
+
+This will generate a text file with the complete documentation, just like the CLI.
 
 ---
 
@@ -90,67 +96,7 @@ If only the installed package is found (without Sphinx docs), ContextMaker will 
 
 ---
 
-## Advanced Usage for Developers
-
-### Direct Module Usage
-
-```bash
-# Use the module directly
-python -m contextmaker.contextmaker pixell
-```
-
-### Manual Sphinx Conversion
-
-For advanced users, you can use the markdown builder directly:
-
-```bash
-python src/contextmaker/converters/markdown_builder.py \
-  --sphinx-source /path/to/docs \
-  --output /path/to/output.txt \
-  --source-root /path/to/source \
-  --html-to-text
-```
-
----
-
-## Examples
-
-### Convert pixell documentation
-
-```bash
-# 1. Clone pixell (if not already done)
-git clone https://github.com/simonsobs/pixell.git ~/Documents/GitHub/pixell
-
-# 2. Generate documentation
-contextmaker pixell
-
-# 3. Result: ~/your_context_library/pixell.txt
-```
-
-### Convert numpy documentation
-
-```bash
-# 1. Clone numpy
-git clone https://github.com/numpy/numpy.git ~/Documents/GitHub/numpy
-
-# 2. Generate documentation
-contextmaker numpy
-
-# 3. Result: ~/your_context_library/numpy.txt
-```
-
----
-
 ## Troubleshooting
-
-### Command not found
-```bash
-# Reinstall the package
-pip install -e .
-
-# Use module directly
-python -m contextmaker.contextmaker pixell
-```
 
 ### Library not found
 ```bash
