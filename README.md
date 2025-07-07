@@ -61,16 +61,16 @@ contextmaker pixell --input_path /path/to/library/source
 You can also use ContextMaker programmatically in your Python scripts:
 
 ```python
-from contextmaker.contextmaker import convert
+import contextmaker
 
 # Minimal usage (automatic search, default output path)
-convert("pixell")
+contextmaker.convert("pixell")
 
 # With custom output path
-convert("pixell", output_path="/tmp")
+contextmaker.convert("pixell", output_path="/tmp")
 
 # With manual input path
-convert("pixell", input_path="/path/to/pixell/source")
+contextmaker.convert("pixell", input_path="/path/to/pixell/source")
 ```
 
 This will generate a text file with the complete documentation, just like the CLI.
