@@ -469,11 +469,11 @@ def build_html_and_convert_to_text(sphinx_source, conf_path, source_root, output
 
 def find_notebooks_in_doc_dirs():
     """
-    Find all .ipynb files in 'docs/' and 'doc/' directories, sorted alphabetically.
+    Find all .ipynb files in 'docs/', 'doc/', and 'docs/source/' directories, sorted alphabetically.
     Returns a list of absolute paths.
     """
     candidates = []
-    for doc_dir in ["docs", "doc"]:
+    for doc_dir in ["docs", "doc", "docs/source"]:
         if os.path.isdir(doc_dir):
             candidates.extend(glob.glob(os.path.join(doc_dir, "*.ipynb")))
     return sorted([os.path.abspath(nb) for nb in candidates])
