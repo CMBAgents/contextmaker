@@ -81,6 +81,7 @@ def combine_markdown_files_to_txt(temp_output_path, output_path, library_name):
     """
     Combine all markdown files in the temporary directory into a single text file named <library_name>.txt.
     Converts markdown to plain text.
+    Ensures at least two blank lines between notebook cells (for .md files from notebooks).
     """
     os.makedirs(output_path, exist_ok=True)
     combined_file_path = os.path.join(output_path, f"{library_name}.txt")
@@ -96,6 +97,10 @@ def combine_markdown_files_to_txt(temp_output_path, output_path, library_name):
                 file_path = os.path.join(temp_output_path, file)
                 with open(file_path, "r", encoding="utf-8") as f:
                     content = f.read()
+                    # Ensure at least two blank lines between notebook cells (for .md files)
+                    # Replace single blank lines between code/text blocks with two blank lines
+                    # This is a simple heuristic: replace '\n\n' with '\n\n\n' but avoid over-inserting
+                    content = content.replace('\n\n', '\n\n\n')
                     # Convert markdown to plain text
                     text = h2t.handle(content)
                     combined_file.write(f"\n\n---\n\n# {file}\n\n")
@@ -110,12 +115,15 @@ def jupyter_to_markdown(file_path, output_path):
         file_path (str): Path to the Jupyter notebook.
         output_path (str): Directory to save the generated markdown file.
     """
-    cmd = ["jupytext", "--to", "md", file_path, "-o", output_path]
+    # Construct the output .md file path in the output directory
+    base_name = os.path.splitext(os.path.basename(file_path))[0]
+    md_file_path = os.path.join(output_path, base_name + ".md")
+    cmd = ["jupytext", "--to", "md", file_path, "-o", md_file_path]
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         logger.error("Jupytext error: %s", result.stderr)
     else:
-        logger.info("Notebook converted to markdown: %s", file_path)
+        logger.info("Notebook converted to markdown: %s", md_file_path)
 
 def docstrings_to_markdown(file_path, output_path):
     """
