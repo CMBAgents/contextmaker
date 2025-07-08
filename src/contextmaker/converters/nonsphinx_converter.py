@@ -80,14 +80,10 @@ def create_markdown_files(lib_path, output_path):
 def combine_markdown_files_to_txt(temp_output_path, output_path, library_name):
     """
     Combine all markdown files in the temporary directory into a single text file named <library_name>.txt.
-    Converts markdown to plain text.
-    Ensures at least two blank lines between notebook cells (for .md files from notebooks).
+    For non-Sphinx projects, preserve the Markdown formatting exactly as in the .md files.
     """
     os.makedirs(output_path, exist_ok=True)
     combined_file_path = os.path.join(output_path, f"{library_name}.txt")
-    h2t = html2text.HTML2Text()
-    h2t.ignore_links = True
-    h2t.body_width = 0
     with open(combined_file_path, "w", encoding="utf-8") as combined_file:
         # Add the global title like in the Sphinx converter
         combined_file.write(f"# - Complete Documentation | {library_name} -\n\n")
@@ -97,14 +93,9 @@ def combine_markdown_files_to_txt(temp_output_path, output_path, library_name):
                 file_path = os.path.join(temp_output_path, file)
                 with open(file_path, "r", encoding="utf-8") as f:
                     content = f.read()
-                    # Ensure at least two blank lines between notebook cells (for .md files)
-                    # Replace single blank lines between code/text blocks with two blank lines
-                    # This is a simple heuristic: replace '\n\n' with '\n\n\n' but avoid over-inserting
-                    content = content.replace('\n\n', '\n\n\n')
-                    # Convert markdown to plain text
-                    text = h2t.handle(content)
+                    # Write a section separator and filename
                     combined_file.write(f"\n\n---\n\n# {file}\n\n")
-                    combined_file.write(text)
+                    combined_file.write(content)
     logger.info(f"All documentation combined into: {combined_file_path}")
 
 def jupyter_to_markdown(file_path, output_path):
