@@ -88,7 +88,7 @@ project = 'Library Documentation'
 copyright = '2025'
 author = 'ContextMaker'
 release = '1.0.0'
-version = '0.1.0'
+version = '0.1.1'
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.napoleon',
