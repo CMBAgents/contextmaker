@@ -15,7 +15,7 @@ import html2text
 import re
 import pkgutil
 
-# Configure logging
+# Logging configuration
 logging.basicConfig(
     level=logging.INFO,
     format="[%(levelname)s] %(message)s"
@@ -26,10 +26,8 @@ logger = logging.getLogger(__name__)
 def create_safe_conf_py(original_conf_path):
     """
     Create a safe version of conf.py by removing problematic sys.exit() calls.
-    
     Args:
         original_conf_path (str): Path to the original conf.py file
-        
     Returns:
         str: Path to the temporary safe conf.py file, or None if failed
     """
@@ -39,7 +37,7 @@ def create_safe_conf_py(original_conf_path):
         
         # Check if the file contains sys.exit() calls
         if 'sys.exit(' in content:
-            logger.warning(" 📄 Detected sys.exit() calls in conf.py, creating a safe version...")
+            logger.warning("Detected sys.exit() in conf.py, creating safe version.")
             
             # Create a temporary directory for the safe conf.py
             temp_dir = tempfile.mkdtemp(prefix="safe_conf_")
@@ -53,12 +51,14 @@ def create_safe_conf_py(original_conf_path):
                 f.write(safe_content)
             
             logger.info(f" 📄 Created safe conf.py at: {safe_conf_path}")
+            logger.info(f"Safe conf.py created: {safe_conf_path}")
             return safe_conf_path
         else:
             return original_conf_path
             
     except Exception as e:
         logger.error(f" 📄 Failed to create safe conf.py: {e}")
+        logger.error(f"Failed to create safe conf.py: {e}")
         return original_conf_path
 
 
@@ -105,27 +105,28 @@ intersphinx_mapping = {{
 '''
     with open(minimal_conf_path, 'w', encoding='utf-8') as f:
         f.write(minimal_conf_content)
-    logger.info(f" 📄 Created minimal conf.py at: {minimal_conf_path}")
+    logger.info(f"conf.py minimal : {minimal_conf_path}")
+    logger.info(f"Minimal conf.py: {minimal_conf_path}")
     return minimal_conf_path
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Build Sphinx documentation in Markdown format for LLM context.")
-    parser.add_argument("--exclude", type=str, default="", help="Comma-separated list of files to exclude (without .md extension)")
-    parser.add_argument("--output", type=str, required=True, help="Output file path")
-    parser.add_argument("--sphinx-source", type=str, required=True, help="Path to Sphinx source directory (where conf.py and index.rst are)")
+    parser = argparse.ArgumentParser(description="Builds Sphinx documentation in Markdown for LLM.")
+    parser.add_argument("--exclude", type=str, default="", help="List of files to exclude, separated by commas (without .md extension)")
+    parser.add_argument("--output", type=str, required=True, help="Path to the output file")
+    parser.add_argument("--sphinx-source", type=str, required=True, help="Path to the Sphinx source folder (where conf.py and index.rst are located)")
     parser.add_argument("--conf", type=str, default=None, help="Path to conf.py (default: <sphinx-source>/conf.py)")
     parser.add_argument("--index", type=str, default=None, help="Path to index.rst (default: <sphinx-source>/index.rst)")
-    parser.add_argument("--notebook", type=str, default=None, help="Path to notebook to convert and append")
-    parser.add_argument("--source-root", type=str, required=True, help="Absolute path to the root of the source code to add to sys.path for Sphinx autodoc.")
-    parser.add_argument("--library-name", type=str, default=None, help="Name of the library for the documentation title.")
-    parser.add_argument("--html-to-text", action="store_true", help="Build Sphinx HTML and convert to text instead of Markdown.")
+    parser.add_argument("--notebook", type=str, default=None, help="Path to a notebook to convert and add")
+    parser.add_argument("--source-root", type=str, required=True, help="Absolute path to the source code root to add to sys.path for Sphinx autodoc.")
+    parser.add_argument("--library-name", type=str, default=None, help="Library name for the documentation title.")
+    parser.add_argument("--html-to-text", action="store_true", help="Builds the Sphinx doc in HTML then converts to text instead of Markdown.")
     return parser.parse_args()
 
 
 def patch_sys_exit_in_py_files(root_dir):
     """
-    Parcourt tous les fichiers .py sous root_dir et commente les appels à sys.exit().
+    Walk through all .py files under root_dir and comment out sys.exit() calls.
     """
     for dirpath, _, filenames in os.walk(root_dir):
         for filename in filenames:
@@ -139,14 +140,15 @@ def patch_sys_exit_in_py_files(root_dir):
                         with open(file_path, 'w', encoding='utf-8') as f:
                             f.write(patched)
                         logger.info(f" 📄 Patched sys.exit() in {file_path}")
+                        logger.info(f"Patched sys.exit() in {file_path}")
                 except Exception as e:
-                    logger.warning(f" 📄 Could not patch {file_path}: {e}")
+                    logger.warning(f"Could not patch {file_path}: {e}")
 
 
 def copy_and_patch_source(original_path):
     """
-    Copie le dossier original_path dans un dossier temporaire et patch tous les .py pour neutraliser sys.exit().
-    Retourne le chemin du dossier temporaire.
+    Copy the original_path folder to a temporary folder and patch all .py files to neutralize sys.exit().
+    Returns the path to the temporary folder.
     """
     temp_dir = tempfile.mkdtemp(prefix="patched_src_")
     dest_path = os.path.join(temp_dir, os.path.basename(original_path))
@@ -159,19 +161,20 @@ def copy_and_patch_source(original_path):
 
 
 def build_markdown(sphinx_source, conf_path, source_root, robust=False):
-    # Copie et patch du dossier source_root et sphinx_source
+    # Copy and patch source_root and sphinx_source folders
     patched_source_root = copy_and_patch_source(source_root)
     patched_sphinx_source = copy_and_patch_source(sphinx_source)
-    # On utilise le conf.py du dossier patché
+    # Use the conf.py from the patched folder
     patched_conf_path = os.path.join(patched_sphinx_source, os.path.basename(conf_path))
     build_dir = tempfile.mkdtemp(prefix="sphinx_build_")
-    logger.info(f" 📄 Temporary build directory: {build_dir}")
+    logger.info(f"Build directory: {build_dir}")
     os.makedirs(build_dir, exist_ok=True)
     if robust:
         # Always use minimal conf.py
         minimal_conf_path = create_minimal_conf_py(patched_sphinx_source, patched_source_root)
         conf_dir = os.path.dirname(minimal_conf_path)
         logger.info(f" 📄 Forcing minimal conf.py for robust mode: {minimal_conf_path}")
+        logger.info(f"Using minimal conf.py for robust mode: {minimal_conf_path}")
         result = subprocess.run(
             ["sphinx-build", "-b", "markdown", "-c", conf_dir, patched_sphinx_source, build_dir],
             capture_output=True,
@@ -180,17 +183,22 @@ def build_markdown(sphinx_source, conf_path, source_root, robust=False):
         )
         if result.returncode != 0:
             logger.error(" 📄 sphinx-build failed even with minimal configuration in robust mode.")
+            logger.error("sphinx-build failed with minimal config (robust mode).")
             logger.error(" 📄 stdout:\n%s", result.stdout)
             logger.error(" 📄 stderr:\n%s", result.stderr)
     else:
-        # Crée une version safe du conf.py si besoin
+        # Create a safe version of conf.py if needed
         safe_conf_path = create_safe_conf_py(patched_conf_path)
         conf_dir = os.path.dirname(safe_conf_path)
-        logger.info(f" 📄 sphinx_source: {patched_sphinx_source}")
-        logger.info(f" 📄 conf_path: {safe_conf_path}")
-        logger.info(f" 📄 build_dir: {build_dir}")
-        logger.info(f" 📄 sphinx-build command: sphinx-build -b markdown -c {conf_dir} {patched_sphinx_source} {build_dir}")
-        logger.info(" 📄 Running sphinx-build...")
+        logger.info(f"sphinx_source : {patched_sphinx_source}")
+        logger.info(f"conf_path : {safe_conf_path}")
+        logger.info(f"build_dir : {build_dir}")
+        logger.info(f"Commande sphinx-build : sphinx-build -b markdown -c {conf_dir} {patched_sphinx_source} {build_dir}")
+        logger.info("Lancement de sphinx-build...")
+        logger.info(f"sphinx_source: {patched_sphinx_source}")
+        logger.info(f"conf_path: {safe_conf_path}")
+        logger.info(f"build_dir: {build_dir}")
+        logger.info(f"Running sphinx-build for markdown output.")
         result = subprocess.run(
             ["sphinx-build", "-b", "markdown", "-c", conf_dir, patched_sphinx_source, build_dir],
             capture_output=True,
@@ -198,7 +206,7 @@ def build_markdown(sphinx_source, conf_path, source_root, robust=False):
             env={**os.environ, "PYTHONPATH": patched_source_root + os.pathsep + os.environ.get("PYTHONPATH", "")}
         )
         if result.returncode != 0:
-            logger.error(" 📄 sphinx-build failed with return code %s", result.returncode)
+            logger.error(f"sphinx-build failed with return code {result.returncode}")
             logger.error(" 📄 stdout:\n%s", result.stdout)
             logger.error(" 📄 stderr:\n%s", result.stderr)
             # Try with minimal conf.py
@@ -211,7 +219,7 @@ def build_markdown(sphinx_source, conf_path, source_root, robust=False):
                 env={**os.environ, "PYTHONPATH": patched_source_root + os.pathsep + os.environ.get("PYTHONPATH", "")}
             )
             if result.returncode == 0:
-                logger.info(" ✅ sphinx-build completed successfully with minimal configuration.")
+                logger.info("sphinx-build succeeded with minimal config.")
                 try:
                     temp_dir = os.path.dirname(minimal_conf_path)
                     shutil.rmtree(temp_dir)
@@ -285,7 +293,7 @@ def extract_toctree_order_recursive(rst_path, seen=None):
 
 def combine_markdown(build_dir, exclude, output, index_path, library_name):
     md_files = glob.glob(os.path.join(build_dir, "*.md"))
-    logger.info(f"[DEBUG] Found .md files in build_dir: {[os.path.basename(f) for f in md_files]}")
+    logger.info(f"Markdown files found: {[os.path.basename(f) for f in md_files]}")
     exclude_set = set(f"{e.strip()}.md" for e in exclude if e.strip())
 
     filtered = [f for f in md_files if os.path.basename(f) not in exclude_set]
@@ -300,19 +308,18 @@ def combine_markdown(build_dir, exclude, output, index_path, library_name):
 
     # Use recursive toctree extraction
     toctree_order = extract_toctree_order_recursive(index_path) if index_path else []
-    logger.info(f"[DEBUG] Toctree order (from .rst): {toctree_order}")
+    logger.info(f"Toctree order: {toctree_order}")
     name_to_file = {os.path.splitext(os.path.basename(f))[0]: f for f in others}
     ordered = []
     for doc in toctree_order:
         if doc in name_to_file:
-            logger.info(f"[DEBUG] Including referenced file: {doc}.md")
             ordered.append(name_to_file.pop(doc))
         else:
-            logger.warning(f"[DEBUG] Referenced in toctree but .md not found: {doc}.md")
+            logger.warning(f"Referenced in toctree but .md not found: {doc}.md")
 
     remaining = sorted(name_to_file.values())
     if remaining:
-        logger.info(f"[DEBUG] .md files not referenced in toctree: {[os.path.basename(f) for f in remaining]}")
+        logger.info(f".md files not referenced in toctree: {[os.path.basename(f) for f in remaining]}")
     ordered.extend(remaining)
 
     final_order = ([index_md] if index_md else []) + ordered
@@ -329,18 +336,37 @@ def combine_markdown(build_dir, exclude, output, index_path, library_name):
                 out.write(infile.read())
                 out.write("\n\n")
 
-    logger.info(f" 📄 Combined markdown written to {output}")
+    logger.info(f"Combined markdown written to {output}")
+
+
+def find_notebooks_in_doc_dirs(library_root):
+    """
+    Find all .ipynb files in 'docs/', 'doc/', and 'docs/source/' directories inside the given library root, sorted alphabetically.
+    Returns a list of absolute paths.
+    """
+    candidates = []
+    for doc_dir in ["docs", "doc", "docs/source"]:
+        abs_doc_dir = os.path.join(library_root, doc_dir)
+        if os.path.isdir(abs_doc_dir):
+            found = glob.glob(os.path.join(abs_doc_dir, "*.ipynb"))
+            logger.info(f"Notebooks in {abs_doc_dir}: {found}")
+            candidates.extend(found)
+    abs_candidates = sorted([os.path.abspath(nb) for nb in candidates])
+    if abs_candidates:
+        logger.info(f"Notebooks found: {abs_candidates}")
+    else:
+        logger.info(f"No notebooks found in docs/, doc/, or docs/source/ under {library_root}.")
+    return abs_candidates
 
 
 def convert_notebook(nb_path):
+    logger.info(f"Converting notebook: {nb_path}")
     if not shutil.which("jupytext"):
         logger.error(" 📄 jupytext is required to convert notebooks.")
         return None
-
     md_path = os.path.splitext(nb_path)[0] + ".md"
     cmd = ["jupytext", "--to", "md", "--opt", "notebook_metadata_filter=-all", nb_path]
-    logger.info(f" 📄 Converting notebook {nb_path} to markdown...")
-
+    logger.info(f"Running jupytext conversion...")
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         logger.error(f" 📄 Failed to convert notebook:\n{result.stderr}")
@@ -348,28 +374,28 @@ def convert_notebook(nb_path):
     if not os.path.exists(md_path):
         logger.error(f" 📄 Expected markdown file {md_path} not found after conversion.")
         return None
-
-    logger.info(f" ✅ Notebook converted to {md_path}")
+    logger.info(f"Notebook converted to {md_path}")
     return md_path
 
 
 def append_notebook_markdown(output_file, notebook_md):
+    logger.info(f"Appending notebook {notebook_md} to {output_file}")
     with open(output_file, "a", encoding="utf-8") as out, open(notebook_md, encoding="utf-8") as nb_md:
         out.write("\n\n# Notebook\n\n---\n\n")
         out.write(nb_md.read())
-    logger.info(f" 📄 Appended notebook markdown from {notebook_md} to {output_file}")
+    logger.info(f"Notebook appended: {notebook_md}")
 
 
 def build_html_and_convert_to_text(sphinx_source, conf_path, source_root, output):
     # Copie et patch du dossier source_root et sphinx_source
     patched_source_root = copy_and_patch_source(source_root)
     patched_sphinx_source = copy_and_patch_source(sphinx_source)
-    # On utilise le conf.py du dossier patché
+    # Use the conf.py from the patched folder
     patched_conf_path = os.path.join(patched_sphinx_source, os.path.basename(conf_path))
     build_dir = tempfile.mkdtemp(prefix="sphinx_html_build_")
     logger.info(f" 📄 Temporary HTML build directory: {build_dir}")
     os.makedirs(build_dir, exist_ok=True)
-    # Crée une version safe du conf.py si besoin
+    # Create a safe version of conf.py if needed
     safe_conf_path = create_safe_conf_py(patched_conf_path)
     conf_dir = os.path.dirname(safe_conf_path)
     logger.info(f" 📄 sphinx_source: {patched_sphinx_source}")
@@ -384,7 +410,7 @@ def build_html_and_convert_to_text(sphinx_source, conf_path, source_root, output
         env={**os.environ, "PYTHONPATH": patched_source_root + os.pathsep + os.environ.get("PYTHONPATH", "")}
     )
     if result.returncode != 0:
-        logger.error(" 📄 sphinx-build (HTML) failed with return code %s", result.returncode)
+        logger.error(f"sphinx-build failed with return code {result.returncode}")
         logger.error(" 📄 stdout:\n%s", result.stdout)
         logger.error(" 📄 stderr:\n%s", result.stderr)
         
@@ -469,18 +495,6 @@ def build_html_and_convert_to_text(sphinx_source, conf_path, source_root, output
     return True
 
 
-def find_notebooks_in_doc_dirs():
-    """
-    Find all .ipynb files in 'docs/', 'doc/', and 'docs/source/' directories, sorted alphabetically.
-    Returns a list of absolute paths.
-    """
-    candidates = []
-    for doc_dir in ["docs", "doc", "docs/source"]:
-        if os.path.isdir(doc_dir):
-            candidates.extend(glob.glob(os.path.join(doc_dir, "*.ipynb")))
-    return sorted([os.path.abspath(nb) for nb in candidates])
-
-
 def main():
     args = parse_args()
     exclude = args.exclude.split(",") if args.exclude else []
@@ -499,7 +513,7 @@ def main():
     combine_markdown(build_dir, exclude, args.output, index_path, library_name)
     # Append all notebooks found in docs/ and doc/ (alphabetically)
     appended_notebooks = set()
-    for nb_path in find_notebooks_in_doc_dirs():
+    for nb_path in find_notebooks_in_doc_dirs(source_root):
         notebook_md = convert_notebook(nb_path)
         if notebook_md:
             append_notebook_markdown(args.output, notebook_md)
