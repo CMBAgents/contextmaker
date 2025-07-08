@@ -198,7 +198,7 @@ def build_markdown(sphinx_source, conf_path, source_root, robust=False):
         logger.info(f"sphinx_source: {patched_sphinx_source}")
         logger.info(f"conf_path: {safe_conf_path}")
         logger.info(f"build_dir: {build_dir}")
-        logger.info(f"Running sphinx-build for markdown output.")
+        logger.info("Running sphinx-build for markdown output.")
         result = subprocess.run(
             ["sphinx-build", "-b", "markdown", "-c", conf_dir, patched_sphinx_source, build_dir],
             capture_output=True,
@@ -337,6 +337,13 @@ def combine_markdown(build_dir, exclude, output, index_path, library_name):
                 out.write("\n\n")
 
     logger.info(f"Combined markdown written to {output}")
+    # Delete the combined markdown file after writing
+    try:
+        if os.path.exists(output):
+            os.remove(output)
+            logger.info(f"Deleted combined markdown file: {output}")
+    except Exception as e:
+        logger.warning(f"Could not delete combined markdown file: {output}. Error: {e}")
 
 
 def find_notebooks_in_doc_dirs(library_root):
@@ -366,7 +373,7 @@ def convert_notebook(nb_path):
         return None
     md_path = os.path.splitext(nb_path)[0] + ".md"
     cmd = ["jupytext", "--to", "md", "--opt", "notebook_metadata_filter=-all", nb_path]
-    logger.info(f"Running jupytext conversion...")
+    logger.info("Running jupytext conversion...")
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         logger.error(f" 📄 Failed to convert notebook:\n{result.stderr}")
