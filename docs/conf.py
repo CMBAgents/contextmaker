@@ -6,7 +6,7 @@ project = 'ContextMaker'
 copyright = '2025, Chadi Ait Ekioui'
 author = 'Chadi Ait Ekioui'
 release = '0.1.0'
-version = '0.1.1'
+version = '0.1.2'
 
 extensions = [
     'sphinx.ext.autodoc',
