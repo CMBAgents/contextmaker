@@ -141,6 +141,13 @@ def main():
             if doc_format == 'sphinx':
                 txt_file = os.path.splitext(output_file)[0] + ".txt"
                 markdown_to_text(output_file, txt_file)
+                # Delete the markdown file after successful text conversion
+                if os.path.exists(txt_file):
+                    try:
+                        os.remove(output_file)
+                        logger.info(f"Deleted markdown file after text conversion: {output_file}")
+                    except Exception as e:
+                        logger.warning(f"Could not delete markdown file: {output_file}. Error: {e}")
         else:
             logger.warning(" ⚠️ Conversion completed with warnings or partial results.")
 

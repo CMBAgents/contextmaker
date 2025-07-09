@@ -337,13 +337,6 @@ def combine_markdown(build_dir, exclude, output, index_path, library_name):
                 out.write("\n\n")
 
     logger.info(f"Combined markdown written to {output}")
-    # Delete the combined markdown file after writing
-    try:
-        if os.path.exists(output):
-            os.remove(output)
-            logger.info(f"Deleted combined markdown file: {output}")
-    except Exception as e:
-        logger.warning(f"Could not delete combined markdown file: {output}. Error: {e}")
 
 
 def find_notebooks_in_doc_dirs(library_root):
