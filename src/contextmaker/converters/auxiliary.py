@@ -147,26 +147,27 @@ def has_source(lib_path: str) -> bool:
 
 def find_library_path(library_name: str) -> str | None:
     """
-    Find the library path by searching in common locations, but only if it contains Sphinx documentation (doc/ or docs/ with conf.py and index.rst).
-    
+    Find the library path by searching in common locations.
+    - Prefer Sphinx documentation (doc/ or docs/ with conf.py and index.rst).
+    - When searching from the home directory and its subfolders, if no Sphinx doc is found after searching up to four directory levels deep, accept a directory with the correct name even if it doesn't have Sphinx docs.
+    - Do NOT do this for site-packages or pip-installed locations.
     Args:
         library_name (str): Name of the library to find.
-        
     Returns:
         str | None: Path to the library if found, None otherwise.
     """
     import site
     import sys
-    
+
     # Common search paths
     search_paths = []
-    
+
     # 1. Current working directory and subdirectories
     search_paths.append(os.getcwd())
-    
+
     # 2. User's home directory and common subdirectories
     home = os.path.expanduser("~")
-    search_paths.extend([
+    home_subdirs = [
         home,
         os.path.join(home, "Documents"),
         os.path.join(home, "Downloads"),
@@ -175,28 +176,28 @@ def find_library_path(library_name: str) -> str | None:
         os.path.join(home, "repos"),
         os.path.join(home, "workspace"),
         os.path.join(home, "code"),
-    ])
-    
+    ]
+    search_paths.extend(home_subdirs)
+
     # 3. Python site-packages directories
+    site_package_paths = []
     for site_dir in site.getsitepackages():
-        search_paths.append(site_dir)
-    
+        site_package_paths.append(site_dir)
     # 4. User site-packages
     user_site = site.getusersitepackages()
     if user_site:
-        search_paths.append(user_site)
-    
+        site_package_paths.append(user_site)
     # 5. Virtual environment site-packages (if in a venv)
     if hasattr(sys, 'real_prefix') or (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix):
         venv_site = os.path.join(sys.prefix, 'lib', 'python*', 'site-packages')
-        search_paths.extend(glob.glob(venv_site))
-    
+        site_package_paths.extend(glob.glob(venv_site))
     # 6. Conda environments
     conda_prefix = os.environ.get('CONDA_PREFIX')
     if conda_prefix:
         conda_site = os.path.join(conda_prefix, 'lib', 'python*', 'site-packages')
-        search_paths.extend(glob.glob(conda_site))
-    
+        site_package_paths.extend(glob.glob(conda_site))
+    search_paths.extend(site_package_paths)
+
     # Helper to check for Sphinx doc - use the existing find_sphinx_source function
     def has_sphinx_doc(lib_path: str) -> str | None:
         sphinx_source = find_sphinx_source(lib_path)
@@ -205,14 +206,21 @@ def find_library_path(library_name: str) -> str | None:
             return sphinx_source
         logger.debug(f"❌ No Sphinx docs found in: {lib_path}")
         return None
-    
-    # Search for the library
+
+    # Helper to check if a path is under home or its subfolders
+    def is_under_home(path: str) -> bool:
+        return any(os.path.commonpath([os.path.abspath(path), os.path.abspath(h)]) == os.path.abspath(h) for h in home_subdirs)
+
+    # Track if we found a non-Sphinx match under home (for fallback)
+    nonsphinx_candidate = None
+    nonsphinx_candidate_depth = float('inf')
+
     for search_path in search_paths:
         if not os.path.exists(search_path):
             continue
-            
+
         logger.debug(f"🔍 Searching in: {search_path}")
-        
+
         # Look for exact match first
         exact_path = os.path.join(search_path, library_name)
         if os.path.exists(exact_path):
@@ -221,9 +229,15 @@ def find_library_path(library_name: str) -> str | None:
             if doc_path:
                 logger.info(f"✅ Found library '{library_name}' with Sphinx docs at: {exact_path}")
                 return exact_path
+            # If under home, record as possible fallback
+            if is_under_home(exact_path):
+                depth = os.path.relpath(exact_path, home).count(os.sep)
+                if depth < nonsphinx_candidate_depth:
+                    nonsphinx_candidate = exact_path
+                    nonsphinx_candidate_depth = depth
             else:
                 logger.debug(f"❌ No Sphinx docs found in: {exact_path}")
-        
+
         # Look in subdirectories
         for root, dirs, files in os.walk(search_path):
             for dir_name in dirs:
@@ -234,9 +248,20 @@ def find_library_path(library_name: str) -> str | None:
                     if doc_path:
                         logger.info(f"✅ Found library '{library_name}' with Sphinx docs at: {full_path}")
                         return full_path
+                    # If under home, record as possible fallback
+                    if is_under_home(full_path):
+                        depth = os.path.relpath(full_path, home).count(os.sep)
+                        if depth < nonsphinx_candidate_depth:
+                            nonsphinx_candidate = full_path
+                            nonsphinx_candidate_depth = depth
                     else:
                         logger.debug(f"❌ No Sphinx docs found in: {full_path}")
-    
+
+    # Fallback: if we searched under home and found a non-Sphinx candidate within 4 levels, return it
+    if nonsphinx_candidate is not None and nonsphinx_candidate_depth <= 4:
+        logger.warning(f"⚠️ No Sphinx docs found, but returning non-Sphinx library at: {nonsphinx_candidate} (depth {nonsphinx_candidate_depth})")
+        return nonsphinx_candidate
+
     logger.error(f"❌ Library '{library_name}' with Sphinx documentation not found in common locations")
     return None
 
