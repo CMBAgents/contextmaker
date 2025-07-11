@@ -2,6 +2,9 @@ import os
 import ast
 import glob
 import logging
+import platform
+import subprocess
+import sys
 
 logger = logging.getLogger(__name__)
 
@@ -305,3 +308,38 @@ def convert_markdown_to_txt(output_folder: str, library_name: str) -> str:
 
     logger.info(f"✅ Markdown converted to text at: {txt_path}")
     return txt_path
+
+
+def find_library_file(camb_dir, libname):
+    """
+    Recursively search for the Fortran library file under camb_dir.
+    Returns the first match or None if not found.
+    """
+    matches = glob.glob(os.path.join(camb_dir, '**', libname), recursive=True)
+    return matches[0] if matches else None
+
+
+def ensure_camb_built(camb_dir: str):
+    """
+    Ensure the CAMB Fortran library is built. If not, build it automatically.
+    Args:
+        camb_dir (str): Path to the CAMB source directory (where setup.py is).
+    Raises:
+        RuntimeError: If the build fails or setup.py is missing.
+    """
+    libname = "cambdll.dll" if platform.system() == "Windows" else "camblib.so"
+    libpath = find_library_file(camb_dir, libname)
+    if not libpath:
+        setup_py = os.path.join(camb_dir, "setup.py")
+        if not os.path.isfile(setup_py):
+            raise RuntimeError(f"setup.py not found in {camb_dir}")
+        logger.info(f"Building CAMB Fortran library in {camb_dir}...")
+        result = subprocess.run([sys.executable, "setup.py", "make"], cwd=camb_dir)
+        # Search again after build
+        libpath = find_library_file(camb_dir, libname)
+        if result.returncode != 0 or not libpath:
+            logger.error("Failed to build CAMB Fortran library. Please check your Fortran compiler and dependencies.")
+            raise RuntimeError("Failed to build CAMB Fortran library. Please check your Fortran compiler and dependencies.")
+        logger.info(f"CAMB Fortran library built successfully at {libpath}.")
+    else:
+        logger.info(f"CAMB Fortran library already built at {libpath}.")

@@ -83,6 +83,9 @@ def main():
             if not input_path:
                 logger.error(f"❌ Library '{args.library_name}' not found. Try specifying the path manually with --input_path")
                 sys.exit(1)
+        # Ensure CAMB is built if processing CAMB
+        if args.library_name.lower() == "camb":
+            auxiliary.ensure_camb_built(input_path)
         
         # Determine output path
         if args.output:
@@ -179,6 +182,9 @@ def convert(library_name, output_path=None, input_path=None):
             if not input_path:
                 logger.error(f"❌ Library '{library_name}' not found. Try specifying the path manually with input_path.")
                 return None
+        # Ensure CAMB is built if processing CAMB
+        if library_name.lower() == "camb":
+            auxiliary.ensure_camb_built(input_path)
 
         # Determine output path
         if output_path:
