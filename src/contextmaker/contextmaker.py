@@ -86,6 +86,7 @@ def main():
         # Ensure CAMB is built if processing CAMB
         if args.library_name.lower() == "camb":
             auxiliary.ensure_camb_built(input_path)
+            auxiliary.patch_camb_sys_exit(input_path)
         
         # Determine output path
         if args.output:
@@ -185,6 +186,7 @@ def convert(library_name, output_path=None, input_path=None):
         # Ensure CAMB is built if processing CAMB
         if library_name.lower() == "camb":
             auxiliary.ensure_camb_built(input_path)
+            auxiliary.patch_camb_sys_exit(input_path)
 
         # Determine output path
         if output_path:

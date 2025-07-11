@@ -343,3 +343,45 @@ def ensure_camb_built(camb_dir: str):
         logger.info(f"CAMB Fortran library built successfully at {libpath}.")
     else:
         logger.info(f"CAMB Fortran library already built at {libpath}.")
+
+# --- CAMB sys.exit patching utility ---
+
+def patch_camb_sys_exit(camb_dir: str):
+    """
+    Recursively replace sys.exit( with raise ImportError( in all .py files under camb_dir, except excluded files.
+    Args:
+        camb_dir (str): Path to the CAMB source directory.
+    """
+    import os
+    ROOTS = [
+        camb_dir,
+        os.path.join(camb_dir, "camb"),
+        os.path.join(camb_dir, "docs"),
+        os.path.join(camb_dir, "fortran", "tests"),
+    ]
+    EXCLUDE = [
+        os.path.normpath(os.path.join("fortran", "tests", "CAMB_test_files.py")),
+    ]
+    def patch_sys_exit_in_file(filepath):
+        with open(filepath, "r", encoding="utf-8") as f:
+            content = f.read()
+        if "sys.exit(" in content:
+            logger.info(f"Patching sys.exit in {filepath}")
+            content = content.replace("sys.exit(", "raise ImportError(")
+            with open(filepath, "w", encoding="utf-8") as f:
+                f.write(content)
+    def should_patch(filepath):
+        filepath_norm = os.path.normpath(filepath)
+        for excl in EXCLUDE:
+            if filepath_norm.endswith(excl):
+                return False
+        return True
+    for root in ROOTS:
+        if not os.path.exists(root):
+            continue
+        for dirpath, _, filenames in os.walk(root):
+            for filename in filenames:
+                if filename.endswith(".py"):
+                    fullpath = os.path.join(dirpath, filename)
+                    if should_patch(fullpath):
+                        patch_sys_exit_in_file(fullpath)
