@@ -5,8 +5,8 @@ sys.path.insert(0, os.path.abspath('../src'))
 project = 'ContextMaker'
 copyright = '2025, Chadi Ait Ekioui'
 author = 'Chadi Ait Ekioui'
-release = '0.1.0'
-version = '0.1.2'
+release = '1.0.0'
+version = '1.0.0'
 
 extensions = [
     'sphinx.ext.autodoc',
