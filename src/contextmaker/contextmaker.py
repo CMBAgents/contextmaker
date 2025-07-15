@@ -19,6 +19,7 @@ import os
 import sys
 import logging
 from contextmaker.converters import nonsphinx_converter, auxiliary
+import subprocess
 
 # Set up the logger
 logging.basicConfig(
@@ -67,9 +68,28 @@ def markdown_to_text(md_path, txt_path):
     logger.info(f"Converted {md_path} to plain text at {txt_path}")
 
 
+def ensure_library_installed(library_name):
+    try:
+        __import__(library_name)
+    except ImportError:
+        logger.info(f"Library '{library_name}' not found. Attempting to install it via pip...")
+        result = subprocess.run([sys.executable, "-m", "pip", "install", library_name])
+        if result.returncode != 0:
+            logger.error(f"Automatic pip install failed for '{library_name}'. Please install it manually.")
+            sys.exit(1)
+        try:
+            __import__(library_name)
+        except ImportError:
+            logger.error(f"Library '{library_name}' could not be imported even after pip install. Please check the library name and your environment.")
+            sys.exit(1)
+
+
 def main():
     try:
         args = parse_args()
+        
+        # Ensure target library is installed before processing
+        ensure_library_installed(args.library_name)
         
         # Determine input path
         if args.input_path:
@@ -173,6 +193,9 @@ def convert(library_name, output_path=None, input_path=None):
         str: Path to the generated documentation file, or None if failed.
     """
     try:
+        # Ensure target library is installed before processing
+        ensure_library_installed(library_name)
+        
         # Determine input path
         if input_path:
             input_path = os.path.abspath(input_path)
