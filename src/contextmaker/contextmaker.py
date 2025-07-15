@@ -175,6 +175,15 @@ def main():
         else:
             logger.warning(" ⚠️ Conversion completed with warnings or partial results.")
 
+        # At the very end, delete the conversion.log file if it exists
+        log_path = os.path.join(os.getcwd(), "conversion.log")
+        if os.path.exists(log_path):
+            try:
+                os.remove(log_path)
+                logger.info(f"Deleted log file: {log_path}")
+            except Exception as e:
+                logger.warning(f"Could not delete log file: {log_path}. Error: {e}")
+
     except Exception as e:
         logger.exception(f" ❌ An unexpected error occurred: {e}")
         sys.exit(1)
