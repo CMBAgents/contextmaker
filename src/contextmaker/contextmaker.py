@@ -189,7 +189,7 @@ def main():
         sys.exit(1)
 
 
-def convert(library_name, output_path=None, input_path=None):
+def make(library_name, output_path=None, input_path=None):
     """
     Convert a library's documentation to text format (programmatic API).
 
@@ -204,7 +204,6 @@ def convert(library_name, output_path=None, input_path=None):
     try:
         # Ensure target library is installed before processing
         ensure_library_installed(library_name)
-        
         # Determine input path
         if input_path:
             input_path = os.path.abspath(input_path)
@@ -280,6 +279,14 @@ def convert(library_name, output_path=None, input_path=None):
     except Exception as e:
         logger.exception(f" ❌ An unexpected error occurred: {e}")
         raise
+
+
+# Optionally, keep the old 'convert' as a deprecated alias
+
+def convert(*args, **kwargs):
+    import warnings
+    warnings.warn("'convert' is deprecated, use 'make' instead.", DeprecationWarning)
+    return make(*args, **kwargs)
 
 
 if __name__ == "__main__":

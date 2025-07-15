@@ -109,3 +109,14 @@ contextmaker pixell --input_path /path/to/pixell/repo
 ### No documentation detected
 - Ensure the library has a `docs/` or `doc/` directory with `conf.py` and `index.rst`
 - Clone the official repository if using an installed package
+
+### Programmatic API
+
+You can also use contextmaker as a Python library:
+
+```python
+from contextmaker.contextmaker import make
+
+# Example: convert the documentation for 'pixell' and save to a custom output folder
+make('pixell', output_path='/tmp/context_output')
+```
