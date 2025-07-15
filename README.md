@@ -16,6 +16,8 @@ This project uses the [CAMB](https://camb.info/) code developed by Antony Lewis 
 Install ContextMaker from PyPI:
 
 ```bash
+python3 -m venv context_env
+source context_env/bin/activate
 pip install contextmaker
 ```
 
