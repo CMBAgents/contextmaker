@@ -1,6 +1,6 @@
 [project]
 name = "contextmaker"
-version = "1.1.0"
+version = "1.2.0"
 description = "A simple context builder and converter toolkit"
 readme = "README.md"
 license = { text = "MIT" }
@@ -19,6 +19,12 @@ dependencies = [
     "beautifulsoup4",
     "html2text",
     "markdown",
+    "numpy",
+    "docutils",
+    "jinja2",
+    "pygments",
+    "nbformat",
+    "nbconvert",
 ]
 
 [project.optional-dependencies]
