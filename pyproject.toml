@@ -25,6 +25,7 @@ dependencies = [
     "pygments",
     "nbformat",
     "nbconvert",
+    "jupyter",
 ]
 
 [project.optional-dependencies]

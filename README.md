@@ -80,3 +80,30 @@ contextmaker.make("pixell", extension="md")
 # CLI usage with extension
 contextmaker pixell --extension md
 ```
+
+## Running the Jupyter Notebook
+
+To launch and use the notebooks provided in this project, follow these steps:
+
+1. **Install Jupyter**  
+If Jupyter is not already installed, you can install it with:
+```bash
+pip install jupyter
+```
+
+2. **Launch Jupyter Notebook**  
+Navigate to the project directory and run:
+```bash
+jupyter notebook
+```
+This will open the Jupyter interface in your web browser.
+
+3. **Add Your Environment as a Jupyter Kernel (Optional but recommended)**  
+If you are using a virtual environment, you can add it as a Jupyter kernel so you can select it in the notebook interface:
+```bash
+python -m ipykernel install --user --name context_env --display-name "Python (context_env)"
+```
+Then, in the Jupyter interface, select the "Python (context_env)" kernel for your notebook.
+
+4. **Open the notebook**  
+In the Jupyter interface, navigate to the `notebook/` directory and open the desired `.ipynb` file.
