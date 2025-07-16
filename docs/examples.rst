@@ -6,8 +6,8 @@ This section provides practical examples of how to use ContextMaker for differen
 Simple Usage Examples
 --------------------
 
-Example 1: Convert pixell documentation
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Example 1: Make pixell documentation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 

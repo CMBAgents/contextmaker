@@ -14,7 +14,7 @@ Introduction
 What is ContextMaker?
 ---------------------
 
-ContextMaker is a powerful tool designed to convert any scientific or software library documentation into a clean, standardized text format optimized for ingestion by CMBAgent. It handles multiple input formats including:
+ContextMaker is a powerful tool designed to make any scientific or software library documentation into a clean, standardized text format optimized for ingestion by CMBAgent. It handles multiple input formats including:
 
 * **Sphinx documentation** (conf.py + .rst files)
 * **Markdown files** (README.md, etc.)

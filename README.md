@@ -66,57 +66,17 @@ You can also use ContextMaker programmatically in your Python scripts:
 import contextmaker
 
 # Minimal usage (automatic search, default output path)
-contextmaker.convert("pixell")
+contextmaker.make("pixell")
 
 # With custom output path
-contextmaker.convert("pixell", output_path="/tmp")
+contextmaker.make("pixell", output_path="/tmp")
 
 # With manual input path
-contextmaker.convert("pixell", input_path="/path/to/pixell/source")
-```
+contextmaker.make("pixell", input_path="/path/to/pixell/source")
 
-This will generate a text file with the complete documentation, just like the CLI.
+# Example: choose output format (txt or md)
+contextmaker.make("pixell", extension="md")
 
----
-
-### Supported Inputs
-
-* Sphinx documentation (conf.py + `.rst`) - **Complete documentation with signatures**
-* Markdown README files (`README.md`)
-* Jupyter notebooks (`.ipynb`)
-* Python source files with docstrings (auto-generated docs if no user docs)
-
----
-
-### Library Requirements
-
-For complete documentation extraction, the library should have:
-- A `docs/` or `doc/` directory containing `conf.py` and `index.rst`
-- Source code accessible for docstring extraction
-
-If only the installed package is found (without Sphinx docs), ContextMaker will extract available docstrings from the source code.
-
----
-
-## Troubleshooting
-
-### Library not found
-```bash
-# Use manual path
-contextmaker pixell --input_path /path/to/pixell/repo
-```
-
-### No documentation detected
-- Ensure the library has a `docs/` or `doc/` directory with `conf.py` and `index.rst`
-- Clone the official repository if using an installed package
-
-### Programmatic API
-
-You can also use contextmaker as a Python library:
-
-```python
-from contextmaker.contextmaker import make
-
-# Example: convert the documentation for 'pixell' and save to a custom output folder
-make('pixell', output_path='/tmp/context_output')
+# CLI usage with extension
+contextmaker pixell --extension md
 ```

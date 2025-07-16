@@ -43,6 +43,7 @@ def parse_args():
     parser.add_argument('library_name', help='Name of the library to convert (e.g., "pixell", "numpy")')
     parser.add_argument('--output', '-o', help='Output path (default: ~/contextmaker_output/)')
     parser.add_argument('--input_path', '-i', help='Manual path to library (overrides automatic search)')
+    parser.add_argument('--extension', '-e', choices=['txt', 'md'], default='txt', help='Output file extension: txt (default) or md')
     return parser.parse_args()
 
 
@@ -130,6 +131,8 @@ def main():
         doc_format = auxiliary.find_format(input_path)
         logger.info(f" 📚 Detected documentation format: {doc_format}")
 
+        extension = args.extension
+
         if doc_format == 'sphinx':
             from contextmaker.converters.markdown_builder import build_markdown, combine_markdown, find_notebooks_in_doc_dirs, convert_notebook, append_notebook_markdown
             sphinx_source = auxiliary.find_sphinx_source(input_path)
@@ -137,13 +140,10 @@ def main():
                 conf_path = os.path.join(sphinx_source, "conf.py")
                 index_path = os.path.join(sphinx_source, "index.rst")
                 output_file = os.path.join(output_path, f"{args.library_name}.md")
-                # Try with original conf.py first
                 build_dir = build_markdown(sphinx_source, conf_path, input_path, robust=False)
-                # Check if build_dir contains any .md files
                 import glob
                 md_files = glob.glob(os.path.join(build_dir, "*.md"))
                 if not md_files:
-                    # Fallback to minimal conf.py if no markdown files were generated
                     logger.warning(" ⚠️ Sphinx build with original conf.py failed or produced no markdown. Falling back to minimal configuration...")
                     build_dir = build_markdown(sphinx_source, conf_path, input_path, robust=True)
                 combine_markdown(build_dir, [], output_file, index_path, args.library_name)
@@ -161,8 +161,7 @@ def main():
         
         if success:
             logger.info(f" ✅ Conversion completed successfully. Output: {output_file if doc_format == 'sphinx' else output_path}")
-            # If output is a .md file, also create a .txt version
-            if doc_format == 'sphinx':
+            if extension == 'txt' and output_file is not None:
                 txt_file = os.path.splitext(output_file)[0] + ".txt"
                 markdown_to_text(output_file, txt_file)
                 # Delete the markdown file after successful text conversion
@@ -172,6 +171,11 @@ def main():
                         logger.info(f"Deleted markdown file after text conversion: {output_file}")
                     except Exception as e:
                         logger.warning(f"Could not delete markdown file: {output_file}. Error: {e}")
+                return txt_file
+            elif output_file is not None:
+                return output_file
+            else:
+                return None
         else:
             logger.warning(" ⚠️ Conversion completed with warnings or partial results.")
 
@@ -189,15 +193,14 @@ def main():
         sys.exit(1)
 
 
-def make(library_name, output_path=None, input_path=None):
+def make(library_name, output_path=None, input_path=None, extension='txt'):
     """
-    Convert a library's documentation to text format (programmatic API).
-
+    Convert a library's documentation to text or markdown format (programmatic API).
     Args:
         library_name (str): Name of the library to convert (e.g., "pixell", "numpy").
         output_path (str, optional): Output directory. Defaults to ~/your_context_library/.
         input_path (str, optional): Manual path to library (overrides automatic search).
-
+        extension (str, optional): Output file extension: 'txt' (default) or 'md'.
     Returns:
         str: Path to the generated documentation file, or None if failed.
     """
@@ -271,7 +274,21 @@ def make(library_name, output_path=None, input_path=None):
 
         if success:
             logger.info(f" ✅ Conversion completed successfully. Output: {output_file}")
-            return output_file
+            if extension == 'txt' and output_file is not None:
+                txt_file = os.path.splitext(output_file)[0] + ".txt"
+                markdown_to_text(output_file, txt_file)
+                # Delete the markdown file after successful text conversion
+                if os.path.exists(txt_file):
+                    try:
+                        os.remove(output_file)
+                        logger.info(f"Deleted markdown file after text conversion: {output_file}")
+                    except Exception as e:
+                        logger.warning(f"Could not delete markdown file: {output_file}. Error: {e}")
+                return txt_file
+            elif output_file is not None:
+                return output_file
+            else:
+                return None
         else:
             logger.warning(" ⚠️ Conversion completed with warnings or partial results.")
             return None
@@ -279,14 +296,6 @@ def make(library_name, output_path=None, input_path=None):
     except Exception as e:
         logger.exception(f" ❌ An unexpected error occurred: {e}")
         raise
-
-
-# Optionally, keep the old 'convert' as a deprecated alias
-
-def convert(*args, **kwargs):
-    import warnings
-    warnings.warn("'convert' is deprecated, use 'make' instead.", DeprecationWarning)
-    return make(*args, **kwargs)
 
 
 if __name__ == "__main__":

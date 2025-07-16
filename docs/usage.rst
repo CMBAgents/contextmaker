@@ -29,7 +29,7 @@ Basic Usage
    # Convert a library's documentation (automatic search)
    contextmaker library_name
 
-   # Example: convert pixell documentation
+   # Example: make pixell documentation
    contextmaker pixell
 
    # Example: convert numpy documentation
@@ -45,6 +45,9 @@ Advanced Usage
 
    # Specify manual input path (overrides automatic search)
    contextmaker pixell --input_path /path/to/library/source
+
+   # You can choose the output format using the --extension/-e flag (txt or md, default is txt)
+   contextmaker pixell --extension md
 
 Output
 ------
@@ -194,4 +197,8 @@ You can also use ContextMaker programmatically in your scripts:
    ]
 
    # Run conversion
-   main() 
+   main()
+
+   # Or programmatically
+   import contextmaker
+   contextmaker.make("pixell", extension="md") 
