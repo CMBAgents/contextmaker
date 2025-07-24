@@ -70,33 +70,58 @@ def markdown_to_text(md_path, txt_path):
 
 
 def ensure_library_installed(library_name):
+    """
+    Try to ensure the library is installed, but continue processing even if it fails.
+    This allows processing of repositories that contain only notebooks or documentation
+    without an installable Python package.
+    
+    Returns:
+        bool: True if library is available, False otherwise
+    """
     try:
         __import__(library_name)
+        logger.info(f"✅ Library '{library_name}' is already available.")
+        return True
     except ImportError:
-        logger.info(f"Library '{library_name}' not found. Attempting to install it via pip...")
-        result = subprocess.run([sys.executable, "-m", "pip", "install", library_name])
-        if result.returncode != 0:
-            logger.error(f"Automatic pip install failed for '{library_name}'. Please install it manually.")
-            sys.exit(1)
+        logger.info(f" Library '{library_name}' not found. Attempting to install it via pip...")
         try:
-            __import__(library_name)
-        except ImportError:
-            logger.error(f"Library '{library_name}' could not be imported even after pip install. Please check the library name and your environment.")
-            sys.exit(1)
+            result = subprocess.run([sys.executable, "-m", "pip", "install", library_name], 
+                                  capture_output=True, text=True, timeout=60)
+            if result.returncode == 0:
+                try:
+                    __import__(library_name)
+                    logger.info(f"✅ Library '{library_name}' successfully installed and imported.")
+                    return True
+                except ImportError:
+                    logger.warning(f" Library '{library_name}' was installed but could not be imported. Continuing with documentation processing...")
+                    return False
+            else:
+                logger.warning(f" Pip install failed for '{library_name}': {result.stderr.strip()}")
+                logger.info(f" Continuing with documentation processing - this might be a repository with notebooks/docs only.")
+                return False
+        except subprocess.TimeoutExpired:
+            logger.warning(f" Pip install timed out for '{library_name}'. Continuing with documentation processing...")
+            return False
+        except Exception as e:
+            logger.warning(f" Unexpected error during pip install for '{library_name}': {e}")
+            logger.info(f" Continuing with documentation processing...")
+            return False
 
 
 def main():
     try:
         args = parse_args()
         
-        # Ensure target library is installed before processing
-        ensure_library_installed(args.library_name)
+        # Try to ensure target library is installed, but continue even if it fails
+        library_available = ensure_library_installed(args.library_name)
+        if not library_available:
+            logger.info(f" Processing documentation for '{args.library_name}' without the library being installed.")
         
         # Determine input path
         if args.input_path:
             # Manual path provided
             input_path = os.path.abspath(args.input_path)
-            logger.info(f"📁 Using manual path: {input_path}")
+            logger.info(f" Using manual path: {input_path}")
         else:
             # Automatic search
             logger.info(f"🔍 Searching for library '{args.library_name}'...")
@@ -104,8 +129,9 @@ def main():
             if not input_path:
                 logger.error(f"❌ Library '{args.library_name}' not found. Try specifying the path manually with --input_path")
                 sys.exit(1)
-        # Ensure CAMB is built if processing CAMB
-        if args.library_name.lower() == "camb":
+        
+        # Ensure CAMB is built if processing CAMB (only if library is available)
+        if args.library_name.lower() == "camb" and library_available:
             auxiliary.ensure_camb_built(input_path)
             auxiliary.patch_camb_sys_exit(input_path)
         
@@ -115,8 +141,8 @@ def main():
         else:
             output_path = auxiliary.get_default_output_path()
         
-        logger.info(f"📁 Input path: {input_path}")
-        logger.info(f"📁 Output path: {output_path}")
+        logger.info(f" Input path: {input_path}")
+        logger.info(f" Output path: {output_path}")
 
         if not os.path.exists(input_path):
             logger.error(f"Input path '{input_path}' does not exist.")
@@ -129,9 +155,10 @@ def main():
         os.makedirs(output_path, exist_ok=True)
 
         doc_format = auxiliary.find_format(input_path)
-        logger.info(f" 📚 Detected documentation format: {doc_format}")
+        logger.info(f"  Detected documentation format: {doc_format}")
 
         extension = args.extension
+        output_file = None
 
         if doc_format == 'sphinx':
             from contextmaker.converters.markdown_builder import build_markdown, combine_markdown, find_notebooks_in_doc_dirs, convert_notebook, append_notebook_markdown
@@ -144,7 +171,7 @@ def main():
                 import glob
                 md_files = glob.glob(os.path.join(build_dir, "*.md"))
                 if not md_files:
-                    logger.warning(" ⚠️ Sphinx build with original conf.py failed or produced no markdown. Falling back to minimal configuration...")
+                    logger.warning("  Sphinx build with original conf.py failed or produced no markdown. Falling back to minimal configuration...")
                     build_dir = build_markdown(sphinx_source, conf_path, input_path, robust=True)
                 combine_markdown(build_dir, [], output_file, index_path, args.library_name)
                 appended_notebooks = set()
@@ -158,10 +185,11 @@ def main():
                 success = False
         else:
             success = nonsphinx_converter.create_final_markdown(input_path, output_path, args.library_name)
+            output_file = os.path.join(output_path, f"{args.library_name}.md")
         
-        if success:
-            logger.info(f" ✅ Conversion completed successfully. Output: {output_file if doc_format == 'sphinx' else output_path}")
-            if extension == 'txt' and output_file is not None:
+        if success and output_file:
+            logger.info(f" ✅ Conversion completed successfully. Output: {output_file}")
+            if extension == 'txt':
                 txt_file = os.path.splitext(output_file)[0] + ".txt"
                 markdown_to_text(output_file, txt_file)
                 # Delete the markdown file after successful text conversion
@@ -171,13 +199,16 @@ def main():
                         logger.info(f"Deleted markdown file after text conversion: {output_file}")
                     except Exception as e:
                         logger.warning(f"Could not delete markdown file: {output_file}. Error: {e}")
-                return txt_file
-            elif output_file is not None:
-                return output_file
+                final_output = txt_file
             else:
-                return None
+                final_output = output_file
+            
+            if not library_available:
+                logger.info(f" Documentation processed successfully despite library '{args.library_name}' not being available as a Python package.")
+            
+            return final_output
         else:
-            logger.warning(" ⚠️ Conversion completed with warnings or partial results.")
+            logger.warning("  Conversion completed with warnings or partial results.")
 
         # At the very end, delete the conversion.log file if it exists
         log_path = os.path.join(os.getcwd(), "conversion.log")
@@ -205,20 +236,24 @@ def make(library_name, output_path=None, input_path=None, extension='txt'):
         str: Path to the generated documentation file, or None if failed.
     """
     try:
-        # Ensure target library is installed before processing
-        ensure_library_installed(library_name)
+        # Try to ensure target library is installed, but continue even if it fails
+        library_available = ensure_library_installed(library_name)
+        if not library_available:
+            logger.info(f" Processing documentation for '{library_name}' without the library being installed.")
+        
         # Determine input path
         if input_path:
             input_path = os.path.abspath(input_path)
-            logger.info(f"📁 Using manual path: {input_path}")
+            logger.info(f" Using manual path: {input_path}")
         else:
             logger.info(f"🔍 Searching for library '{library_name}'...")
             input_path = auxiliary.find_library_path(library_name)
             if not input_path:
                 logger.error(f"❌ Library '{library_name}' not found. Try specifying the path manually with input_path.")
                 return None
-        # Ensure CAMB is built if processing CAMB
-        if library_name.lower() == "camb":
+        
+        # Ensure CAMB is built if processing CAMB (only if library is available)
+        if library_name.lower() == "camb" and library_available:
             auxiliary.ensure_camb_built(input_path)
             auxiliary.patch_camb_sys_exit(input_path)
 
@@ -228,8 +263,8 @@ def make(library_name, output_path=None, input_path=None, extension='txt'):
         else:
             output_path = auxiliary.get_default_output_path()
 
-        logger.info(f"📁 Input path: {input_path}")
-        logger.info(f"📁 Output path: {output_path}")
+        logger.info(f" Input path: {input_path}")
+        logger.info(f" Output path: {output_path}")
 
         if not os.path.exists(input_path):
             logger.error(f"Input path '{input_path}' does not exist.")
@@ -242,7 +277,9 @@ def make(library_name, output_path=None, input_path=None, extension='txt'):
         os.makedirs(output_path, exist_ok=True)
 
         doc_format = auxiliary.find_format(input_path)
-        logger.info(f" 📚 Detected documentation format: {doc_format}")
+        logger.info(f"  Detected documentation format: {doc_format}")
+
+        output_file = None
 
         if doc_format == 'sphinx':
             from contextmaker.converters.markdown_builder import build_markdown, combine_markdown, find_notebooks_in_doc_dirs, convert_notebook, append_notebook_markdown
@@ -255,7 +292,7 @@ def make(library_name, output_path=None, input_path=None, extension='txt'):
                 import glob
                 md_files = glob.glob(os.path.join(build_dir, "*.md"))
                 if not md_files:
-                    logger.warning(" ⚠️ Sphinx build with original conf.py failed or produced no markdown. Falling back to minimal configuration...")
+                    logger.warning("  Sphinx build with original conf.py failed or produced no markdown. Falling back to minimal configuration...")
                     build_dir = build_markdown(sphinx_source, conf_path, input_path, robust=True)
                 combine_markdown(build_dir, [], output_file, index_path, library_name)
                 appended_notebooks = set()
@@ -267,14 +304,13 @@ def make(library_name, output_path=None, input_path=None, extension='txt'):
                 success = True
             else:
                 success = False
-                output_file = None
         else:
             success = nonsphinx_converter.create_final_markdown(input_path, output_path, library_name)
             output_file = os.path.join(output_path, f"{library_name}.md")
 
-        if success:
+        if success and output_file:
             logger.info(f" ✅ Conversion completed successfully. Output: {output_file}")
-            if extension == 'txt' and output_file is not None:
+            if extension == 'txt':
                 txt_file = os.path.splitext(output_file)[0] + ".txt"
                 markdown_to_text(output_file, txt_file)
                 # Delete the markdown file after successful text conversion
@@ -284,13 +320,16 @@ def make(library_name, output_path=None, input_path=None, extension='txt'):
                         logger.info(f"Deleted markdown file after text conversion: {output_file}")
                     except Exception as e:
                         logger.warning(f"Could not delete markdown file: {output_file}. Error: {e}")
-                return txt_file
-            elif output_file is not None:
-                return output_file
+                final_output = txt_file
             else:
-                return None
+                final_output = output_file
+            
+            if not library_available:
+                logger.info(f" Documentation processed successfully despite library '{library_name}' not being available as a Python package.")
+            
+            return final_output
         else:
-            logger.warning(" ⚠️ Conversion completed with warnings or partial results.")
+            logger.warning("  Conversion completed with warnings or partial results.")
             return None
 
     except Exception as e:
