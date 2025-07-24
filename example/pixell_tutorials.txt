@@ -1,0 +1,3837 @@
+# - Complete Documentation | pixell_tutorials -
+
+
+
+---
+
+# Pixell Part 1.md
+
+---
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .md
+      format_name: markdown
+      format_version: '1.3'
+      jupytext_version: 1.17.2
+  kernelspec:
+    display_name: Python 3
+    language: python
+    name: python3
+---
+
+# Tutorial: CMB map analysis with ``pixell``
+
+
+This tutorial will show you how to manipulate and analyze CMB maps. We'll work with a real map of the microwave sky obtained by the Atacama Cosmology Telescope and publicly released in 2014. That release included maps of many regions of the sky in both temperature and polarization. We will just work with the temperature map in a small but deep region of the sky, referred to by ACT as "Deep6".
+
+You can download this map from the following Dropbox link:
+https://www.dropbox.com/sh/6uzpsyb6a38811d/AAA0VkI6Ro1hTWnkQ1CSDrEta?dl=0
+
+If you want to run this notebook, please place the map in the same directory as this notebook.
+
+Most of the map manipulation functions are in ``pixell.enmap``, so let's load that along with ``numpy`` and ``matplotlib``.
+
+```python
+from __future__ import print_function
+%load_ext autoreload
+%autoreload 2
+from pixell import enmap,utils
+import numpy as np
+import matplotlib.pyplot as plt
+```
+
+## Reading in a map and inspecting it
+
+```python
+filename = "actpol_deep6_temperature_car.fits" 
+imap = enmap.read_map(filename,)
+print(imap.shape, imap.dtype)
+
+```
+
+```python
+print(imap.wcs)
+enmap.box(imap.shape,imap.wcs)/utils.degree
+```
+
+```python
+print(np.rad2deg(imap.box()))
+# Y,X = (dec, ra)
+# [[decfrom,rafrom],[[decto,rato]]
+```
+
+```python
+plt.imshow(imap)
+```
+
+```python
+plt.imshow(imap,vmin=-300,vmax=300)
+```
+
+## Visualizing maps with ``pixell.enplot``
+
+```python
+from pixell import enplot
+plots = enplot.plot(imap,range=300,mask=0)
+enplot.write("plots_example",plots)
+
+def eshow(x,**kwargs): enplot.show(enplot.plot(x,**kwargs))
+eshow(imap)
+```
+
+## Selecting regions of the map
+
+```python
+# [[decfrom,rafrom],[[decto,rato]]
+dec,ra = np.deg2rad(np.array((-2.38,33.92)))
+width = np.deg2rad(20./60.)
+box = np.array([[dec-width/2.,ra-width/2.],[dec+width/2.,ra+width/2.]])
+stamp = imap.submap(box)
+plt.imshow(stamp)
+plt.colorbar()
+
+eshow(enmap.upgrade(stamp,5),grid=False, colorbar=True,color='gray')
+```
+
+```python
+modrmap = stamp.modrmap()
+plt.imshow(modrmap)
+plt.colorbar()
+```
+
+```python
+radius = np.deg2rad(2./60.)
+flux_in = stamp[modrmap<radius].mean()
+flux_out = stamp[modrmap>=radius].mean()
+print(flux_out,flux_in)
+```
+
+## Slicing and downgrading
+
+```python
+smap = enmap.downgrade(imap[400:-300,900:-1200],4)
+eshow(smap,range=300)
+```
+
+## Apodizing
+
+```python
+apod_pix=40
+taper = enmap.apod(smap*0+1,apod_pix)
+eshow(taper)
+```
+
+```python
+eshow(smap*taper,range=300)
+```
+
+## Fourier transforms and filtering
+
+```python
+kmap = enmap.fft(smap*taper,normalize="phys")
+print(kmap.shape)
+print(kmap.wcs)
+print(kmap.dtype)
+```
+
+```python
+"""
+A simple filter
+"""
+
+ells = np.arange(0,20000,1)
+ell0 = 4500
+ellsig = 500
+fl = np.exp(-(ells-ell0)**2./2./ellsig**2.)
+
+plt.plot(ells,fl)
+plt.show()
+
+modlmap = enmap.modlmap(smap.shape,smap.wcs)
+modlmap = smap.modlmap()
+
+plt.imshow(modlmap)
+plt.show()
+plt.imshow(np.fft.fftshift(modlmap))
+plt.show()
+
+```
+
+```python
+from scipy.interpolate import interp1d
+
+fl2d = interp1d(ells,fl,bounds_error=False,fill_value=0)(modlmap)
+plt.imshow(np.fft.fftshift(fl2d))
+```
+
+```python
+kfiltered = kmap*fl2d
+filtered = enmap.ifft(kfiltered,normalize="phys").real
+
+eshow(filtered)
+```
+
+## Fourier transforms and naive power spectra
+
+```python
+power = (kmap*np.conj(kmap)).real
+shifted_power = enmap.samewcs(np.fft.fftshift(np.log10(power)),smap)
+eshow(shifted_power,grid=False)
+```
+
+## Binned power spectrum
+
+```python
+modlmap = smap.modlmap()
+plt.imshow(np.fft.fftshift(modlmap))
+plt.colorbar()
+```
+
+```python
+def bin(data,modlmap,bin_edges):
+    digitized = np.digitize(np.ndarray.flatten(modlmap), bin_edges,right=True)
+    return np.bincount(digitized,(data).reshape(-1))[1:-1]/np.bincount(digitized)[1:-1]
+
+bin_edges = np.arange(0,6000,40)
+centers = (bin_edges[1:] + bin_edges[:-1])/2.
+w2 = np.mean(taper**2.)
+binned_power = bin(power/w2,modlmap,bin_edges)
+
+plt.plot(centers,centers**2*binned_power,marker="o",ls="none")
+plt.yscale('log')
+plt.xlabel('$\\ell$')
+plt.ylabel('$D_{\\ell}$')
+plt.show()
+```
+
+## Comparing with theory
+
+```python
+from pixell import powspec
+camb_theory = powspec.read_spectrum("camb_theory.dat")
+cltt = camb_theory[0,0,:3000]
+ls = np.arange(cltt.size)
+
+plt.plot(ls,cltt*ls**2.,lw=3,color='k')
+plt.plot(centers,centers**2*binned_power,marker="o",ls="none")
+plt.yscale('log')
+plt.xlabel('$\\ell$')
+plt.ylabel('$D_{\\ell}$')
+plt.show()
+
+```
+
+## Reprojecting a healpix map
+
+
+NOTE: This section onwards requires you to have a compiled version of pixell.
+
+```python
+from pixell import reproject
+pmap = reproject.enmap_from_healpix("planck_353.fits", smap.shape, smap.wcs, ncomp=1, unit=1, lmax=6000,rot="gal,equ")
+```
+
+```python
+eshow(pmap)
+```
+
+## Cross-correlating Planck with ACT
+
+```python
+kmap2 = enmap.fft(pmap*taper*1e6,normalize="phys")
+cross_power = (kmap*np.conj(kmap2)).real
+binned_cross_power = bin(cross_power/w2,modlmap,bin_edges)
+
+plt.plot(ls,cltt*ls**2.,lw=3,color='k')
+plt.plot(centers,centers**2*binned_power,marker="o",ls="none")
+plt.plot(centers,centers**2*binned_cross_power,marker="o",ls="none")
+plt.yscale('log')
+plt.xlabel('$\\ell$')
+plt.ylabel('$D_{\\ell}$')
+plt.show()
+```
+
+## Stacking
+
+```python
+from astropy.io import fits
+# Download the cluster catalog from https://lambda.gsfc.nasa.gov/data/suborbital/ACT/actpol_2016_lensing/E-D56Clusters.fits
+hdu = fits.open('E-D56Clusters.fits')
+ras = hdu[1].data['RADeg']
+decs = hdu[1].data['DECDeg']
+
+# Write code to get stack
+```
+
+```python
+
+```
+
+```python
+
+```
+
+
+---
+
+# Pixell Part 2.md
+
+---
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .md
+      format_name: markdown
+      format_version: '1.3'
+      jupytext_version: 1.17.2
+  kernelspec:
+    display_name: Python 3
+    language: python
+    name: python3
+---
+
+```python
+%load_ext autoreload
+%autoreload 2
+from pixell import enmap,utils
+import numpy as np
+import matplotlib.pyplot as plt
+```
+
+## Understanding map geometeries
+
+
+You can create a geometry for a given pixel width (resolution) centered at the origin of a CAR projection with 1024 pixels across as follows.
+
+```python
+shape,wcs = enmap.geometry(shape=(1024,1024),res=np.deg2rad(0.5/60.),pos=(0,0))
+```
+
+```python
+print(shape)
+print(wcs)
+```
+
+```python
+posmap = enmap.posmap(shape,wcs)
+print(posmap.shape)
+```
+
+```python
+dec,ra = np.rad2deg(posmap)
+plt.imshow(dec)
+plt.colorbar()
+plt.show()
+plt.imshow(ra)
+plt.colorbar()
+plt.show()
+
+```
+
+```python
+modrmap = enmap.modrmap(shape,wcs)
+plt.imshow(np.rad2deg(modrmap))
+plt.colorbar()
+plt.show()
+```
+
+```python
+pixmap = enmap.pixmap(shape,wcs)
+py,px = pixmap
+plt.imshow(py)
+plt.colorbar()
+plt.show()
+plt.imshow(px)
+plt.colorbar()
+plt.show()
+```
+
+## Understanding 2D Fourier space
+
+```python
+ells = np.arange(0,4000,1)
+ps = 1/ells**2.5
+ps[:2] = 0
+imap = enmap.rand_map(shape,wcs,ps[None,None])
+plt.imshow(imap)
+plt.show()
+```
+
+```python
+kmap = enmap.fft(imap,normalize="phys")
+print(kmap.shape)
+print(kmap.dtype)
+```
+
+```python
+lmap = enmap.lmap(shape,wcs)
+print(lmap.shape)
+lymap,lxmap = lmap
+plt.imshow(lymap)
+plt.colorbar()
+plt.show()
+plt.imshow(lxmap)
+plt.colorbar()
+plt.show()
+```
+
+```python
+ly,lx = enmap.laxes(shape,wcs)
+print(ly.shape,lx.shape)
+print(ly)
+print(lx)
+```
+
+```python
+modlmap = enmap.modlmap(shape,wcs)
+plt.imshow(modlmap)
+plt.colorbar()
+plt.show()
+```
+
+```python
+plt.imshow(np.fft.fftshift(modlmap))
+plt.colorbar()
+plt.show()
+```
+
+```python
+p2d = np.real(kmap * kmap.conj())
+plt.imshow(p2d)
+```
+
+
+---
+
+# PixellIntroduction.md
+
+---
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .md
+      format_name: markdown
+      format_version: '1.3'
+      jupytext_version: 1.17.2
+  kernelspec:
+    display_name: Python 3
+    language: python
+    name: python3
+---
+
+# CMB map analysis with ``pixell``
+## An introduction
+
+
+This tutorial will show you how to manipulate and analyze CMB maps. We'll work with a real map of the microwave sky obtained by the Atacama Cosmology Telescope and publicly released in 2014. That release included maps of many regions of the sky in both temperature and polarization. We will just work with the temperature map in a small but deep region of the sky, referred to by ACT as "Deep6".
+
+If you want to run this notebook, please place the map in the same directory as this notebook.
+
+Most of the map manipulation functions are in ``pixell.enmap``, so let's load that along with ``numpy`` and ``matplotlib``.
+
+```python
+from __future__ import print_function
+%load_ext autoreload
+%autoreload 2
+from pixell import enmap,utils
+import numpy as np
+import matplotlib.pyplot as plt
+import os,sys
+import urllib.request
+```
+
+```python
+# Download some files for the tutorial if they don't already exist.
+# This might take a while.
+# Couple 100 megabytes at most
+deep6_file_name = "ACTPol_148_D6_PA1_S1_1way_I.fits"
+catalog_name = "E-D56Clusters.fits"
+links = [[deep6_file_name,f"https://lambda.gsfc.nasa.gov/data/suborbital/ACT/actpol_2016_maps/{deep6_file_name}"],
+         [catalog_name,"https://lambda.gsfc.nasa.gov/data/suborbital/ACT/actpol_2016_lensing/{catalog_name}"]]
+for fname,link in links: 
+    urllib.request.urlretrieve(link, fname) if not(os.path.exists(fname)) else None
+
+    
+"""
+Also download this 2GB file in a terminal in the background
+wget https://irsa.ipac.caltech.edu/data/Planck/release_2/all-sky-maps/maps/HFI_SkyMap_143_2048_R2.02_full.fits
+"""
+planck_file_name = "HFI_SkyMap_143_2048_R2.02_full.fits"
+```
+
+## Reading in a map and inspecting it
+
+
+In pixell, a map is encapsulated in an `ndmap`, which combines two objects: a numpy array (of at least two dimensions) whose two trailing dimensions correspond to two coordinate axes of the map, and a `wcs` object that specifies the World Coordinate System. The `wcs` component is an instance of Astropy’s `astropy.wcs.wcs.WCS class`. The combination of the `wcs` and the `shape` of the numpy array completely specifies the footprint of a map of the sky, and is called the geometry. pixell helps with manipulation of ndmap objects in ways that are aware of and preserve the validity of the `wcs` information.
+
+pixell can read in rectangular pixelization maps stored with WCS info from either FITS files or HDF files. You are most likely to encounter FITS files. Either of these can be opened with the `read_map` function in the `pixell.enmap` module. Once loaded, you can inspect the usual properties that `numpy` arrays have:
+
+```python
+imap = enmap.read_map(deep6_file_name)
+print(imap.shape, imap.dtype)
+
+```
+
+An ndmap must have at least two dimensions. The two right-most axes represent celestial coordinates (typically Declination and Right Ascension). Maps can have arbitrary number of leading dimensions, but many of the pixell CMB-related tools interpret 3D arrays with shape (ncomp,Ny,Nx) as representing Ny x Nx maps of intensity, polarization Q and U Stokes parameters, in that order.
+
+The map we just loaded in is a CMB temperature/intensity map, so it is single component. It has shape (1505,3521) which means it has 1505 pixels in the Y-direction (which is declination, since the coordinate system used by ACT and most ground-based experiments is Equatorial) and 3521 pixels in the X-direction (which is right ascension in the Equatorial coordinate system).
+
+But as an extension of numpy arrays, `ndmap` objects also contain the WCS object which you can inspect:
+
+```python
+print(imap.wcs)
+```
+
+You'll typically not need to worry about what those WCS keys mean; that's what pixell is here for! But it's  useful to know that the wcs information describes the correspondence between celestial coordinates (typically the Right Ascension and Declination in the Equatorial system) and the pixel indices in the two right-most axes. In some projections, such as CEA or CAR, rows (and columns) of the pixel grid will often follow lines of constant Declination (and Right Ascension). In other projections, this will not be the case.
+
+ACT maps have been in CEA in the past and will be in CAR in the future. Again, pixell lets you be agnostic to the minor differences between these projections.
+
+pixell.enmap contains many functions for manipulating and getting information on these maps. pixell.utils contains miscellaneous utilities. Here's an example of how to obtain the bounding box of a map and convert it to degrees (all units in pixell are by default in radians).
+
+```python
+enmap.box(imap.shape,imap.wcs)/utils.degree
+```
+
+You can also convert radians to degrees with:
+
+```python
+print(np.rad2deg(imap.box()))
+```
+
+Interpreting the above requires us to know some conventions pixell uses. The above is a coordinate bounding box. Since pixell orders coordinates as
+
+Y,X <-> (dec, ra)
+
+The bounding box has convention,
+[[dec_from,ra_from],[[dec_to,ra_to]]
+
+Later we will encounter pixel boxes, which specify bounding boxes in pixel index units. These have a similar convention.
+
+## Visualizing maps with ``pixell.enplot``
+
+One way to visualize maps is using matplotlib.imshow
+
+```python
+plt.imshow(imap)
+```
+
+Ok, so it didn't automatically learn the color scale very well. Let's explicitly specify it since the map is in microKelvin units and the CMB has fluctuations ~300 muK
+
+```python
+plt.imshow(imap,vmin=-300,vmax=300)
+```
+
+matplotlib does some interpolation and downgrading which doesn't make the plot very pretty or useful. pixell has a module called enplot which uses the Python Image Library (PIL) to improve the situation. You will need to do
+
+```
+pip install Pillow --user
+```
+
+to have the following work.
+
+We first import the enplot module and create a `plots` object from the map we just loaded. We set the range to 300 muK and ask enplot to mask zero values in the map.
+
+```python
+from pixell import enplot
+plots = enplot.plot(imap,range=300,mask=0)
+```
+
+Ok, that made the plots object. Now I can either "show" it here, or save it to disk as a PNG file. Let's first show it inline in the Jupyter notebook. 
+
+```python
+enplot.show(plots)
+```
+
+That's better!
+
+Jupyter notebooks can be limiting though, so what I like to do is to save the image to disk as a PNG file, and use a very nice lightweight Linux tool called `feh` to open it.
+
+```python
+enplot.write("plots_example",plots)
+# Note: no need to specify the file extension. Also, the plots image can be made from a stack of maps, i.e. maps that have additional leading dimensions.
+
+# Optional
+os.system("feh plots_example.png")
+```
+
+With feh, you can zoom in and pan around the image in a very intutitive manner, and freeze locations of different map images (with identical footprint) relative to each other. I don't know of a good equivalent of `feh` on Mac OS X, so feel free to drop recommendations on the Issues page.
+
+
+## Selecting regions of the map
+**Because your astronomer friend told you dec=-2.38 deg, ra = 33.92 deg has a little surprise**
+
+Suppose you are interested in an object at 
+dec=-2.38 deg, ra = 33.92 deg
+
+and you want to look at a stamp around this location with width 20 arcminutes.
+
+```python
+dec,ra = np.deg2rad([-2.38,33.92])
+width = np.deg2rad(20./60.)
+
+```
+
+You can construct a coordinate box for this region using the convention we saw earlier,
+[[dec_from,ra_from],[[dec_to,ra_to]]
+and use the submap function to create a new ndmap from the orginal full map that extracts this region
+
+```python
+box = [[dec-width/2.,ra-width/2.],[dec+width/2.,ra+width/2.]]
+stamp = imap.submap(box)
+```
+
+Note that unlike vanilla numpy arrays, ndmaps have additional member functions like submap.
+
+Instead of accessing these functions from the object with the dot operator, they can usually be accessed from the module itself. For example, the above is identical to
+
+```
+stamp = enmap.submap(imap,box)
+```
+
+Let's plot the stamp with matplotlib
+
+```python
+plt.imshow(stamp)
+plt.colorbar()
+```
+
+So there was something mildly interesting there after all, a point source! We can also plot it using enplot:
+
+```python
+print(stamp.shape,stamp.wcs)
+enplot.show(enplot.plot(stamp,grid=False, color='gray'))
+```
+
+Ok, so that's a bit small. That's because enplot by default displays the map *as is*, and does not try to upscale or downgrade it. Let's upgrade the stamp by a factor of 5 to display it.
+
+```python
+enplot.show(enplot.plot(enmap.upgrade(stamp,5),grid=False, colorbar=True,color='gray'))
+```
+
+To start to get some information out of this source, it would be good to have some handle on the geometry in a way that I don't have to think about things like pixel size. pixell has a ton of utilities for this. For example, I can quickly create a "map of distances from the center" on the same geometry as this stamp with the enmap.modrmap function or equivalently the member function modrmap of the stamp ndmap object.
+
+```python
+modrmap = stamp.modrmap() #1
+# which is the same as
+shape,wcs = stamp.shape, stamp.wcs
+modrmap = enmap.modrmap(shape,wcs) #2
+# Notice how you can do these calculations either with an existing map (#1) or with a geometry pair shape,wcs (#2) when you don't actually have a map in hand
+
+```
+
+The map of distances from the center looks like what you might have expected it to
+
+```python
+plt.imshow(modrmap)
+plt.colorbar()
+modrmap.wcs
+```
+
+But this handy map now lets us make quantitive assesments of the original map. For example, I can calculate the mean pixel value within a radius of 2 arcminutes and compare it to the value beyond 2 arcminutes.
+
+```python
+radius = np.deg2rad(2./60.)
+flux_in = stamp[modrmap<radius].mean()
+flux_out = stamp[modrmap>=radius].mean()
+print(flux_out,flux_in)
+```
+
+## Slicing and downgrading
+
+
+Pretty much any indexing trick you love doing on a numpy array, you can do on an ndmap as well. Most importantly, *the WCS automatically adjusts to it*. Here is an example where we trim off some of the edges of the map.
+
+```python
+smap = imap[400:-300,900:-1200]
+print(imap.shape,imap.wcs)
+print(smap.shape,smap.wcs)
+```
+
+Not only did you get a trimmed map, you also had its WCS updated in the process. Let's plot the trimmed map:
+
+
+```python
+enplot.show(enplot.plot(smap))
+```
+
+Let's downgrade the map by a factor of four. This is done internally through pixel averaging.
+*WARNING*: Such operations generally introduce a pixel window function and change the power spectrum of the map, so you'll have to be careful about that when doing precision analysis.
+
+```python
+smap = enmap.downgrade(smap,4)
+print(smap.shape,smap.wcs)
+enplot.show(enplot.plot(smap,range=300))
+```
+
+It's worth reiterating this: the wcs information is correctly adjusted when the array is sliced or downgraded (any numpy index based operation and any pixell function will preserve and adjust wcs correctly ); for example the object returned by imap[:50,:50] is a view into the imap data attached to a new wcs object that correctly describes the footprint of the extracted pixels.
+
+Many functions that act on numpy arrays (e.g. ufuncs) will also apply their operation on the numpy data within the ndmap and return back an ndmap with the same wcs. *Some* functions however (in particular, functions that do a np.asarray(x) on the input array x as opposed to a np.asanyarray(x) ) will destroy/detach the WCS information. In such cases, you can attach the original wcs information back on to the array in one of several ways.
+
+```python
+tmap = smap.copy() # let's test it out on a copy of the previous map
+print(tmap.shape,tmap.wcs)
+```
+
+That map has WCS, good. Now let's pass it through a function which acts on numpy arrays and returns a numpy array but sadly destroys the WCS because internally it does a np.asarray(x) on the input array x instead of a np.asanyarray(x).
+
+```python
+nmap = np.fft.fftshift(tmap) # This is just an example function that clobbers WCS, don't pay attention to it specifically
+print(nmap.shape)
+print(nmap.wcs)
+```
+
+Ok, so you can see I lost my WCS info from that map. But not to worry, there are a couple of ways I can attach it back:
+
+```python
+nmap = enmap.samewcs(nmap,tmap)
+print(nmap.shape,nmap.wcs)
+# or like this
+wcs = tmap.wcs
+nmap = enmap.ndmap(nmap,wcs)
+print(nmap.shape,nmap.wcs)
+# or equivalently
+nmap = enmap.enmap(nmap,wcs)
+print(nmap.shape,nmap.wcs)
+# Note that the names ndmap and enmap are used somewhat interchangeably within pixell.
+```
+
+## Apodizing
+
+
+You will probably know that if we want to do any sort of harmonic analysis (up next), we require periodic boundary conditions. We can prepare an edge taper map on the same footprint as our map of interest smap using the pixell.enmap.apod function.
+
+```python
+apod_pix=40 # number of pixels at the edge to apodize
+taper = enmap.apod(smap*0+1,apod_pix) # I pass in an array of ones the same shape,wcs as smap
+enplot.show(enplot.plot(taper))
+```
+
+Applying this to my CMB map makes it have a nice zeroed edge:
+
+```python
+enplot.show(enplot.plot(smap*taper,range=300))
+```
+
+## Fourier transforms and filtering
+
+
+Now that I have a map that has been prepared for harmonic analysis, I can take harmonic transforms of it that can be used to filter the map or calculate its power spectra. I'll first demonstrate "flat-sky" FFTs, since this patch is fairly close to the equator and not very large. These are much faster and still very accurate. They are also very convenient for applying 2-dimensional filters (e.g. if you wanted to mask out noisy modes that are horizontal or vertical in the map, as would be seen in ground-based CMB experiments).
+
+We first calcualte the FFT of the tapered map, which will return an ndmap which is complex but has the same WCS. One can leave the FFT normalization to the default value as long as later IFFT operations also do so. However, it is very convenient to use the *physical* normalization convention designated within pixell (this is not the default) by passing "phys" to the normalize argument. This ensures that pixel area factors are applied such that the square of the FFT is the power spectrum in units of steradians, such that you don't have to think about pixel area factors when calculating the power. If you use this normalization, just make sure you use it again in any subsequent IFFT operations.
+
+```python
+kmap = enmap.fft(smap*taper,normalize="phys")
+print(kmap.shape)
+print(kmap.wcs)
+print(kmap.dtype)
+print(kmap)
+```
+
+This provides a 2D map of the same shape and wcs as the original real space map, but now the numpy data is a complex 2D array that contains the complex FFT. Each pixel in this map corresponds to a Fourier pixel in the 2D Fourier space.
+
+Great, now that we have the FFT, we can apply a simple filter by multiplying the FFT by a 2D function of our choice. But first we need to know what Fourier frequency values correspond to each Fourier pixel. Just like a real space map would have declination and right ascension values for each pixel, each Fourier pixel will have a corresponding `ly` and `lx` Fourier pixel frequency value. We can obtain this using the `enmap.lmap` function which wraps knowledge of the physical extent of the map around numpy's `np.fft.fftfreq`.
+
+
+
+```python
+lymap,lxmap = smap.lmap()
+plt.imshow(lymap)
+plt.show()
+plt.imshow(lxmap)
+plt.show()
+```
+
+Remember, these are maps of the `ly` and `lx` Fourier frequency in each Fourier pixel of the map.
+If you're used to working with FFTs, you'll notice the convention is such that the positive frequencies come first, followed by increasing negative frequencies. You can show these in the more intuitive zero-centered form by using np.fft.fftshift (which as we saw earlier, destroys WCS information, so watch out for that).
+
+```python
+plt.imshow(np.fft.fftshift(lymap)) ; plt.show()
+plt.imshow(np.fft.fftshift(lxmap)) ; plt.show()
+```
+
+While Fourier frequencies are better visualized zero-centered (so that fftshift is applied just before and only for plotting), we don't recommend actually ever storing such Fourier frequencies arrays in their shifted form, since that breaks convention and is also just unnecessary as long as you use maps like these to index the Fourier pixels of interest.
+
+Most often you will want to apply *isotropic* operations, which do not distinguish `ly` and `lx`, so for these a map of the magnitude of the distance in Fourier space from zero is useful, which is just the sum of squares of the above. There is a convenience function for this that is very commonly used.
+
+```python
+modlmap = smap.modlmap()
+plt.imshow(np.fft.fftshift(modlmap)) ; plt.colorbar() ; plt.show()
+```
+
+Ok, let's build a simple isotropic filter that tries to mimic a point source finder. We want to downweight large scales dominated by CMB and downweight small scales dominated by instrument noise to find objects that are roughly a few arcminutes in size.
+
+```python
+"""
+I make my simple filter centered on ell of 4500 with a spread of 500
+"""
+
+ells = np.arange(0,20000,1)
+ell0 = 4500
+ellsig = 500
+fl = np.exp(-(ells-ell0)**2./2./ellsig**2.)
+
+# I plot the 1d filter
+
+plt.plot(ells,fl)
+plt.show()
+
+
+```
+
+I can now interpolate this 1D filter on to the 2D grid using the Fourier distances modlmap.
+
+```python
+from scipy.interpolate import interp1d
+
+fl2d = interp1d(ells,fl,bounds_error=False,fill_value=0)(modlmap)
+plt.imshow(np.fft.fftshift(fl2d))
+```
+
+As desired, this is an isotropic ring that isolates all Fourier modes of rough magnitude around 4500. Now I filter the map by multiplying it's Fourier tranform by this 2D filter, and then inverse FFTing it back with the same normalization I used before.
+
+```python
+kfiltered = kmap*fl2d
+filtered = enmap.ifft(kfiltered,normalize="phys").real
+
+enplot.show(enplot.plot(filtered))
+```
+
+That kind of worked? I seem to have found some regions where point sources live! We can do much better with a proper matched filter, but that's beyond the scope of this tutorial.
+
+
+## Fourier transforms and naive power spectra
+
+
+I can calculate the 2D power spectrum by squaring the Fourier transform. Since the normalization was "physical", I don't have to worry about any pixel area scaling factors.
+
+```python
+power = (kmap*np.conj(kmap)).real
+# I'll FFT shift and log transform the power to visualize it
+shifted_power = enmap.samewcs(np.fft.fftshift(np.log10(power)),smap)
+
+plt.imshow(shifted_power) ; plt.show()
+#enplot.show(enplot.plot(shifted_power,grid=False))
+```
+
+You are looking at the power spectrum of the map. It looks fairly isotropic. This is what you would expect of most things in the map (like the CMB, some part of the instrument noise, extragalactic foregrounds, but not for Galactic foregrounds or for anisotropic instrument noise, ground pickup).
+
+To compare this to theoretical expectations, we have to bin the 2D power spectrum in annuli.
+
+
+## Binned power spectrum
+
+```python
+# This is a simple binning function that finds the mean in annular bins defined by bin_edges
+def bin(data,modlmap,bin_edges):
+    digitized = np.digitize(np.ndarray.flatten(modlmap), bin_edges,right=True)
+    return np.bincount(digitized,(data).reshape(-1))[1:-1]/np.bincount(digitized)[1:-1]
+
+bin_edges = np.arange(0,6000,40)
+centers = (bin_edges[1:] + bin_edges[:-1])/2.
+binned_power = bin(power,modlmap,bin_edges)
+
+plt.plot(centers,centers**2*binned_power,marker="o",ls="none")
+plt.yscale('log')
+plt.xlabel('$\\ell$')
+plt.ylabel('$D_{\\ell}$')
+plt.show()
+```
+
+That's looking pretty good! You should be able to see a hint of acoustic oscillations from the CMB itself. Let's compare this to theory.
+
+
+## Comparing with theory
+
+
+pixell's powspec module has utilities to facilitate loading theory C_ells from CAMB outputs. We plot our measurement against it.
+
+```python
+from pixell import powspec
+camb_theory = powspec.read_spectrum("camb_theory.dat")
+cltt = camb_theory[0,0,:3000]
+ls = np.arange(cltt.size)
+
+plt.plot(ls,cltt*ls**2.,lw=3,color='k')
+plt.plot(centers,centers**2*binned_power,marker="o",ls="none")
+plt.yscale('log')
+plt.xlabel('$\\ell$')
+plt.ylabel('$D_{\\ell}$')
+plt.show()
+
+```
+
+This looks a bit low. The reason for that is that we have forgotten that we applied a taper to facilitate the Fourier transform. This taper zeroes out a fraction of the map, which means it lowers the average power spectrum of the map. The proper full treatment of this is to also account for the fact that the mask couples different Fourier modes. Knowledge of the mask allows us to decouple this. pixell does not have code to do that; but codes like `namaster`, `pspy` and `pitas` are designed to properly do this, so check those out!
+
+We can however get an approximate correction. Since the power spectrum squares the map, an approximate accounting for the loss in power is:
+
+```python
+w2 = np.mean(taper**2.)
+#enmap.map2harm(imap) #(3,100,100)
+#curvedsky.map2alm
+```
+
+Dividing the raw power by this factor gets us much better agreement:
+
+```python
+
+plt.plot(ls,cltt*ls**2.,lw=3,color='k')
+plt.plot(centers,centers**2*binned_power / w2,marker="o",ls="none")
+plt.yscale('log')
+plt.xlabel('$\\ell$')
+plt.ylabel('$D_{\\ell}$')
+plt.show()
+```
+
+We only recommend such an approach for quick diagnostic power spectra for debugging or exploration, or for applications to situations where the underlying power spectrum is not so red (rapidly falling). For precision analysis, a mask deconvolution algorithm like that in `namaster`, `pspy` or `pitas` should be used.
+
+<!-- #region -->
+## Spherical harmonic analysis
+NOTE: This section onwards requires you to have a compiled version of pixell.
+
+
+We'll do this live if there's time.
+<!-- #endregion -->
+
+```python
+from pixell import curvedsky
+import healpy as hp
+from pixell import enmap
+
+# libsharp does not have ring weights for the old ACT CEA pixelization
+# so we reproject to the new ACT CAR pixelization
+
+shape,wcs = enmap.geometry(pos=smap.box(),res=np.deg2rad(0.5/60.),proj='car')
+pmap = enmap.project(smap,shape,wcs,order=3)
+
+```
+
+```python
+alms = curvedsky.map2alm(pmap,lmax=6000)
+
+```
+
+```python
+print(alms)
+```
+
+```python
+cls = hp.alm2cl(alms)
+lcls = np.arange(cls.size)
+
+# Area correction ; this should actually be a taper-weighted area calculation
+w2f = enmap.area(smap.shape,smap.wcs) / 4. / np.pi
+
+plt.plot(ls,cltt*ls**2.,lw=3,color='k')
+plt.plot(lcls,cls*lcls**2./w2f,lw=3,color='red')
+plt.plot(centers,centers**2*binned_power / w2,marker="o",ls="none")
+plt.yscale('log')
+plt.xlabel('$\\ell$')
+plt.ylabel('$D_{\\ell}$')
+plt.show()
+```
+
+## Reprojecting a healpix map
+
+
+A simple way to reproject a healpix map to the same geometry of the rectangular pixel map you are working with is to :
+1. spherical harmonic transform the healpix map to alm's
+2. inverse spherical harmonic transform the alm's to the rectangular pixel map geometry
+
+The pixell.reproject module has a function that does this. You can also apply a rotation of the coordinate system from Galactic to Equatorial.
+
+```python
+from pixell import reproject
+pmap = reproject.enmap_from_healpix(planck_file_name, smap.shape, smap.wcs, ncomp=1, unit=1, lmax=6000,rot="gal,equ")
+```
+
+```python
+#enplot.show(enplot.plot(pmap))
+
+enplot.write("planck_map",enplot.plot(pmap))
+
+```
+
+```python
+enplot.write("act_map",enplot.plot(smap))
+
+```
+
+## Cross-correlating Planck with ACT
+
+
+We can now cross-correlate this map with the ACT map on the same footprint. 
+
+```python
+kmap2 = enmap.fft(pmap*taper*1e6,normalize="phys")
+cross_power = (kmap*np.conj(kmap2)).real
+binned_cross_power = bin(cross_power/w2,modlmap,bin_edges)
+
+plt.plot(ls,cltt*ls**2.,lw=3,color='k')
+plt.plot(centers,centers**2*binned_power,marker="o",ls="none")
+plt.plot(centers,centers**2*binned_cross_power,marker="o",ls="none")
+plt.yscale('log')
+plt.xlabel('$\\ell$')
+plt.ylabel('$D_{\\ell}$')
+plt.show()
+```
+
+Can you guess why the orange points are so different from the blue points?
+
+
+## Stacking
+
+
+We have a nice deep CMB map, and we have a catalog of SZ clusters. Why don't we stack on the location of these clusters to see the average signal?
+
+```python
+from astropy.io import fits
+
+hdu = fits.open('E-D56Clusters.fits')
+ras = hdu[1].data['RADeg']
+decs = hdu[1].data['DECDeg']
+
+# Write code to get stack
+N = len(ras)
+print(N)
+print(smap.shape)
+stack = 0
+for i in range(N):
+    # Extract stamps by reprojecting to a tangent plane projection
+    stamp = reproject.postage_stamp(smap,ras[i],decs[i],20.,0.5)
+    if stamp is None: continue 
+    stack += stamp[0]
+    
+stack /= N
+
+```
+
+```python
+plt.imshow(stack) ; plt.show()
+```
+
+## Masking
+
+
+Mask from source locations
+
+```python
+r = np.deg2rad(5./60.)
+srcs = np.deg2rad([decs,ras])
+dmap = enmap.downgrade(imap,2)
+mask = enmap.distance_from(dmap.shape,dmap.wcs,srcs, rmax=r) >= r
+
+enplot.write('imap',enplot.plot(dmap,range=200))
+enplot.write('mask',enplot.plot(mask))
+enplot.show(enplot.plot(mask))
+
+```
+
+Binary mask from thresholding
+
+```python
+mask = dmap.copy()
+mask[np.abs(mask)<1e-3] = 0
+mask[np.abs(mask)>1e-3] = 1
+plt.imshow(mask) ; plt.show()
+```
+
+```python
+
+```
+
+
+---
+
+# PixellSoapackSymlens.md
+
+---
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .md
+      format_name: markdown
+      format_version: '1.3'
+      jupytext_version: 1.17.2
+  kernelspec:
+    display_name: Python 3
+    language: python
+    name: python3
+---
+
+```python
+%load_ext autoreload
+%autoreload 2
+from pixell import enmap,enplot
+import numpy as np
+import symlens
+import soapack.interfaces as sints
+```
+
+pixell : https://github.com/simonsobs/pixell/
+
+soapack : https://github.com/simonsobs/soapack
+
+symlens : https://github.com/simonsobs/symlens
+
+
+# pixell + soapack + symlens demo
+
+
+## Loading an ACT map with soapack
+
+```python
+mask = sints.get_act_mr3_crosslinked_mask('deep6',version="180323")
+dm = sints.ACTc7v5(region=mask)
+imap = dm.get_coadd("S1","D6","PA1",ncomp=1)
+```
+
+## Plotting an ACT map with pixell
+
+```python
+enplot.show(enplot.plot(imap,downgrade=4,colorbar=True))
+enplot.show(enplot.plot(mask,downgrade=4,colorbar=True))
+```
+
+```python
+tmap = imap*mask
+enplot.show(enplot.plot(tmap,downgrade=4,colorbar=True))
+```
+
+## Map manipulation with pixell + lensing reconstruction with symlens
+
+```python
+# Get geometry and fourier info
+shape,wcs = tmap.shape,tmap.wcs
+modlmap = enmap.modlmap(shape,wcs)
+
+# Build a beam
+fwhm = 1.4
+kbeam = np.exp(-(np.deg2rad(fwhm / 60.)**2.)*(modlmap**2.) / (16.*np.log(2.)))
+
+# Get theory spectrum
+ells,cltt = np.loadtxt("cltt.txt",unpack=True)
+
+# Build interpolated 2D Fourier CMB theory
+ucltt2d = np.interp(modlmap,ells,cltt)
+# And total noise power for filters
+tcltt2d = ucltt2d + np.nan_to_num((10.*np.pi/180./60.)**2./kbeam**2.)
+
+# Build a Fourier space mask
+kmask = modlmap*0+1
+kmask[modlmap<500] = 0
+kmask[modlmap>3000] = 0
+
+# Get beam deconvolved fourier map
+kmap = np.nan_to_num(enmap.fft(tmap,normalize="phys")/kbeam)
+
+# Build symlens dictionary
+feed_dict = {
+    'uC_T_T' : ucltt2d,
+    'tC_T_T' : tcltt2d,
+    'X' : kmap,
+    'Y' : kmap,
+}
+
+# Ask for reconstruction in Fourier space
+krecon = symlens.reconstruct(shape, wcs, feed_dict, estimator="hu_ok", XY="TT", xmask=kmask, ymask=kmask, kmask=kmask,pixel_units=False)
+```
+
+```python
+# Transform to real space and plot
+kappa = enmap.ifft(krecon,normalize="phys").real
+enplot.show(enplot.plot(enmap.downgrade(kappa,4),colorbar=True))
+```
+
+```python
+
+```
+
+
+---
+
+# Sims.md
+
+---
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .md
+      format_name: markdown
+      format_version: '1.3'
+      jupytext_version: 1.17.2
+  kernelspec:
+    display_name: Python 3
+    language: python
+    name: python3
+---
+
+# Tutorial: Simulating the CMB with ``pixell``
+
+
+This tutorial will show you how to simulate CMB temperature and polarization both on the flat and full skies. 
+
+```python
+from __future__ import print_function
+from pixell import enmap,curvedsky,utils,powspec,enplot
+import numpy as np
+import matplotlib.pyplot as plt
+```
+
+## Full sky geometry
+
+```python
+ps,_ = powspec.read_camb_scalar("test_scalCls.dat")
+shape,wcs = enmap.fullsky_geometry(res=np.deg2rad(20./60.))
+shape = (3,) + shape
+```
+
+```python
+omap = curvedsky.rand_map(shape,wcs,ps=ps,lmax=1000,spin=[0,2])
+```
+
+```python
+enplot.show(enplot.plot(omap[1],color='gray'))
+```
+
+## Cut-sky FFT based sim
+
+```python
+shape,wcs = enmap.geometry(shape=(500,500),pos=(0,0),res=np.deg2rad(20./60.))
+shape = (3,) + shape
+print(shape,ps.shape)
+omap = enmap.rand_map(shape,wcs,cov=ps)
+print(omap.shape)
+```
+
+```python
+print(omap.shape)
+enplot.show(enplot.plot(omap[1],color='gray'))
+enplot.show(enplot.plot(omap[2],color='gray'))
+```
+
+```python
+
+```
+
+
+---
+
+# pixell_fourier_space_operations.md
+
+---
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .md
+      format_name: markdown
+      format_version: '1.3'
+      jupytext_version: 1.17.2
+  kernelspec:
+    display_name: Python 3
+    name: python3
+---
+
+<!-- #region id="bnfTRYooztmN" -->
+# Fourier Operations with pixell
+
+*Written by the ACT Collaboration*
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/simonsobs/pixell_tutorials/blob/master/pixell_fourier_space_operations.ipynb)
+
+
+---
+
+This notebook, and the accompanying notebooks included in this set, are designed to help users who are new to working with [`pixell`](https://github.com/simonsobs/pixell/) get started with the package. As a set these notebooks will guide users through examples of how to read in and display maps, how to perform spherical harmonic transform and calculate simple spectra, how to transform the maps and how to study point sources in the maps.
+
+The `pixell` library allows users to load,
+manipulate and analyze maps stored in rectangular pixelization. It is
+mainly targeted for use with maps of the sky (e.g. CMB intensity and polarization maps, stacks of 21 cm intensity maps, binned galaxy positions or shear) in cylindrical projection.
+
+
+In this notebook, we walk through common Fourier-space operations in `pixell`. A similar set of exercises is available in [this](https://github.com/ACTCollaboration/DR4_DR5_Notebooks/blob/master/Notebooks/Section_7_power_spectra_part_1.ipynb) ACT DR4/DR5 notebook.
+<!-- #endregion -->
+
+```python colab={"base_uri": "https://localhost:8080/"} id="GPzMLmYO98my" outputId="0563e047-18fa-48b4-9a46-ca5a0e691e4f"
+# Download the data needed for the notebook
+!wget -O act_planck_dr5.01_s08s18_AA_f150_night_map_d56.fits https://phy-act1.princeton.edu/public/zatkins/act_planck_dr5.01_s08s18_AA_f150_night_map_d56.fits
+```
+
+```python colab={"base_uri": "https://localhost:8080/"} id="kDFKT4bz89Ra" outputId="596d0504-6039-4509-99ba-f1e270ee7751"
+# Install neccesary packages
+!pip install pixell
+```
+
+<!-- #region id="d8VPWKGMLNCu" -->
+In this notebook, we will again work with a (cutout of) the ACT DR5+Planck coadd map, in the "deep 56" region. We import the `enmap` module as before, which has most of what we'll need, but we'll also take a peak under-the-hood at some low-level Fourier transform-related code in the `fft` module. Let's import packages and take a look at the map:
+<!-- #endregion -->
+
+```python id="s3We41ht94xX"
+# Import packages
+from pixell import enmap, fft, enplot
+import numpy as np
+import matplotlib.pyplot as plt
+```
+
+```python colab={"base_uri": "https://localhost:8080/"} id="NX2A3eIk-y0J" outputId="8e3966f0-5f40-4c26-90f0-dae9cf641397"
+# Code to read and plot maps
+imap = enmap.read_map("act_planck_dr5.01_s08s18_AA_f150_night_map_d56.fits")
+
+print(imap.geometry, imap.dtype)
+```
+
+<!-- #region id="DqdIuVpdMRlS" -->
+We see there are 3 components in this data. Following convention, this means this map is *polarized*, with intensity (I), and polarization (Q and U). Let's plot the polarized components. Do this in a for loop over components so that the colorbar is automatically adjusted for each component separately:
+<!-- #endregion -->
+
+```python colab={"base_uri": "https://localhost:8080/", "height": 1000} id="HENNNeioMO-d" outputId="cf3ac4d6-e5f8-493c-a43c-41cd23a56b2d"
+for i in range(3):
+  enplot.pshow(imap[i], downgrade=4, colorbar=True)
+```
+
+<!-- #region id="BZS6JX6qOL52" -->
+Cool! We saw the intensity map in a previous notebook. What interests you about the polarization components, Q and U? Anyway, we'll get to them later and deal with intensity only for now:
+<!-- #endregion -->
+
+```python colab={"base_uri": "https://localhost:8080/", "height": 389} id="0lEEld9MOXBP" outputId="9e269fbf-3a15-43b1-e2fa-d4039fb903b2"
+imap_I = imap[0] # get the intensity component of the map for now
+
+enplot.pshow(imap_I, downgrade=4, colorbar=True)
+```
+
+<!-- #region id="Rj46bvfSzsTm" -->
+By now, you should have a little experience with fourier transforms, especially 2d transforms, on numpy arrays (if not, you should refresh yourself by walking through [this CMB school notebook](https://github.com/jeffmcm1977/CMBAnalysis_SummerSchool/blob/master/CMB_School_FFT_intro.ipynb)). Remember, an `ndmap` is just a numpy array with a `wcs` object attached! So everything we learned there about conventions carries over here.
+
+`pixell` has its own Fourier-transform functions that we'll want to use instead of numpy's. One reason is that it will preserve the `wcs`, but also because `pixell` makes available some additional features that will be useful to us as cosmologists.
+
+Let's start by taking a simple 2d fft. It is commonly the case that we will have a map that has some "hard edge" or is does not have continuous boundary conditions like a fullsky map does. In this case, it is very important that we "apodize" the map by applying a smooth taper to it, to give it continuous boundary conditions:
+<!-- #endregion -->
+
+```python colab={"base_uri": "https://localhost:8080/", "height": 742} id="OIrPPHoS7jyi" outputId="491195cd-8a66-47a3-9b0f-eb64b80a270f"
+# get an apodized mask that smoothly tapers the edge of the map
+# we use a taper width of 100 pixels -- what is the size of that in
+# arcminutes?
+taper_mask = enmap.apod(enmap.ones(imap_I.shape, imap_I.wcs), width=100)
+
+enplot.pshow(taper_mask, downgrade=4, colorbar=True)
+
+# we can also taper the map we want directly
+imap_I_apod = imap_I.apod(width=100)
+
+enplot.pshow(imap_I_apod, downgrade=4, colorbar=True)
+```
+
+<!-- #region id="aY_rRxR_bk2k" -->
+Now take the fft:
+<!-- #endregion -->
+
+```python colab={"background_save": true, "base_uri": "https://localhost:8080/", "height": 709} id="15029jNEbmpv" outputId="1098f96f-c063-4f95-8686-6f8b2f680895"
+# Take a simple fourier transform first.
+# normalize='phys' means the fft normalization accounts for the
+# physical pixel size, unlike numpy which just normalizes by the
+# number of pixels. this is one of pixell's key features for
+# cosmology vs numpy!
+kmap = enmap.fft(imap_I_apod, normalize='phys')
+
+# remember, fft's have real and imaginary components
+enplot.pshow(kmap.real, downgrade=4)
+enplot.pshow(kmap.imag, downgrade=4)
+```
+
+<!-- #region id="rW-kaGZCWxU_" -->
+There are a couple things here which don't make immediate sense with the 2d fft.
+
+First: it looks like all the "action" is in the corners of Fourier space. Remember, this was a quirk of the numpy fft convention! Low frequency modes are at the edges of the Fourier transform, and high frequency modes are in the middle. We can make sense of this using `pixell`. Let's first make a plot of the 2d Fourier coordinates themselves:
+<!-- #endregion -->
+
+```python colab={"background_save": true, "base_uri": "https://localhost:8080/", "height": 691} id="TsU6MAQuTt2d" outputId="87e6bec6-e1d9-464d-e48e-4cf8215e1583"
+# get the coordinates of the map in Fourier space
+ly, lx = imap.lmap()
+
+enplot.pshow(ly, downgrade=4, colorbar=True, grid=False)
+enplot.pshow(lx, downgrade=4, colorbar=True, grid=False)
+```
+
+<!-- #region id="LVdCuqJlyv9r" -->
+The first map is the "y" Fourier component; it varies as you move up and down but not left and right. The second map is the "x" component; it varies as you move left and right but not up and down. The "origin" -- the (0, 0) coordinate -- of Fourier space is in the corner, just like in the CMB school FFT notebook, and the biggest value is in the middle. We can use `pixell` to make a map of the distance from 0 in Fourier space too. Bigger numbers mean *smaller* angular scales, and smaller numbers mean *larger* angular scales:
+<!-- #endregion -->
+
+```python colab={"background_save": true, "base_uri": "https://localhost:8080/", "height": 389} id="C5ashsJpzvI7" outputId="ba0efe1b-f3ad-469a-8f39-3d867a552b1b"
+# this is equivalent to sqrt(lx**2 + ly**2)
+modl = imap.modlmap()
+
+enplot.pshow(modl, downgrade=4, colorbar=True)
+```
+
+<!-- #region id="-ZMGTJFTkGFN" -->
+Second, we are in Fourier space: what's the deal with the gridlines? They are the same as the original map -- telling us about dec and RA -- but Fourier space is, well, not map space! This is because `enmap.fft` preserves the `wcs` of the input. Mainly as a plotting convenience, we can get the "`wcs`" of Fourier space too, so that the gridlines correspond to Fourier modes. We can also do the "fftshift" so that the origin of Fourier space gets shifted to the map center. Both of these features are really most convenient for plotting, we don't really need to worry about this so long as we respect the numpy convention:
+<!-- #endregion -->
+
+```python colab={"background_save": true, "base_uri": "https://localhost:8080/", "height": 1000} id="1p54OOm2Zfud" outputId="8a66abde-2a1e-40bf-f80d-d4849bf14b85"
+kwcs = enmap.lwcs(kmap.shape, kmap.wcs)
+
+# reassign the wcs of kmap to be kwcs
+kmap_for_plotting = enmap.ndmap(kmap, kwcs)
+kmap_for_plotting = enmap.fftshift(kmap_for_plotting)
+
+modl_for_plotting = enmap.ndmap(modl, kwcs)
+modl_for_plotting = enmap.fftshift(modl_for_plotting)
+
+enplot.pshow(kmap_for_plotting.real, downgrade=4, colorbar=True, ticks=3000)
+enplot.pshow(kmap_for_plotting.imag, downgrade=4, colorbar=True, ticks=3000)
+enplot.pshow(modl_for_plotting, downgrade=4, colorbar=True, ticks=3000)
+```
+
+<!-- #region id="neNUIFCq1uHM" -->
+So most of the information in the ACT DR5 maps -- where the big noisy blue and red blob is in the first two plots -- corresponds to large angular scales -- small numbers in the 3rd map.
+
+## Power spectrum
+
+Let's use `pixell` to make a power spectrum. A power spectrum tells us "how pronounced features in the map are as a function of their size."
+
+We will bin the power of the Fourier transformed CMB map (the squared amplitude) in rings of constant angular scales. For this we can use the `enmap.lbin` function:
+<!-- #endregion -->
+
+<!-- #region id="tRk_HWUS457m" -->
+
+<!-- #endregion -->
+
+```python id="2x5l8qSD2q72"
+power_spectrum, ell_b = enmap.lbin(abs(kmap)**2, bsize=40) # bin width of 40 in ell
+
+# The taper we applied earlier affects the power spectrum.
+# Pixell can't fully account for how the taper modifies the power spectrum
+# But we can get an approximate correction by dividing out the following term
+w2 = np.mean(taper_mask**2)
+power_spectrum /= w2
+```
+
+```python colab={"base_uri": "https://localhost:8080/", "height": 475} id="8CwujwRl3318" outputId="03f1bfb5-bf2b-4c27-c001-c070c415089e"
+# the ell*(ell+1)/2pi factor is just another cosmology convention
+plt.semilogy(ell_b, power_spectrum * ell_b*(ell_b+1) / 2 / np.pi, marker='.', ls='none')
+plt.xlim(0, 3500)
+plt.ylim(1e2, 1e4)
+```
+
+<!-- #region id="_RoDs_A0F0Kh" -->
+Cool! This means that as the Fourier coordinates get farther from 0 -- as we move from *larger to smaller angular scales in the map* -- generally the amount of features goes down. Large scale features are more pronounced than small scale features. Does this seem true when you look back at the plots at the beginning of the notebook? What else stands out about the power spectrum from scales of ~0 to ~1500?
+
+At a certain point, around 1500, the power spectrum turns upwards again -- what does this mean? What could be driving that feature?
+
+## Polarization
+
+What about the Q and U maps? We need a special kind of Fourier transform to understand their cosmological information. Once we get their Fourier transforms, we need to turn their Q and U modes into what are called "E" and "B" modes. You can explore more about the relationship between Q, U, E, and B in [this notebook](https://github.com/jeffmcm1977/CMBAnalysis_SummerSchool/blob/master/CMB_School_Part_07.ipynb).
+
+Fortunately, `pixell` does that for us. Instead of using `enmap.fft`, we'll use a different function:
+<!-- #endregion -->
+
+```python colab={"base_uri": "https://localhost:8080/"} id="EyZH7NfpHJ4x" outputId="353f541b-3fbf-451f-ab8c-e3c61b74fcf1"
+imap_apod = imap.apod(width=100)
+
+# use enmap.map2harm
+kmap_polarized = enmap.map2harm(imap_apod, normalize='phys')
+
+# now we have a *polarized* Fourier transform, check out the shape
+print(kmap_polarized.shape)
+
+# we can get the power spectrum of each polarization
+# intensity will be the same, but we will also get E*E and B*B
+power_spectra = []
+for i in range(3):
+  power_spectrum, ell_b = enmap.lbin(abs(kmap_polarized[i])**2, bsize=40)
+  power_spectra.append(power_spectrum)
+```
+
+```python colab={"base_uri": "https://localhost:8080/", "height": 475} id="zMCP7L8bH2WV" outputId="a0853983-515f-4cd4-f93d-ae5b521ed148"
+for i in range(3):
+  plt.semilogy(ell_b, power_spectra[i] * ell_b*(ell_b+1) / 2 / np.pi, marker='.', ls='none', label=['TT', 'EE', 'BB'][i])
+plt.xlim(0, 3500)
+plt.ylim(1e-1, 1e4)
+plt.legend()
+```
+
+<!-- #region id="_harQed7IIIc" -->
+The blue line is the same as the first power spectrum plot we made. What do you notice about the EE and BB power spectra?
+
+## Exercise
+
+In ACT, we often remove some Fourier modes from the maps -- ie, set their values to 0 -- before calculating the power spectrum. In particular, we set the Fourier modes where |lx| < 90 and |ly| < 50 to 0. This is because we think these modes are contaminated by picking up the signal from the ground near the telescope.
+
+Adapt the code above to do this, and remeasure the polarized power spectra. Does the way they have changed make sense? Can you write more code that will correct for the change?
+<!-- #endregion -->
+
+```python id="6kw1NaHIKA6g"
+
+```
+
+
+---
+
+# pixell_map_manipulation.md
+
+---
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .md
+      format_name: markdown
+      format_version: '1.3'
+      jupytext_version: 1.17.2
+  kernelspec:
+    display_name: Python 3
+    name: python3
+---
+
+<!-- #region id="view-in-github" colab_type="text" -->
+<a href="https://colab.research.google.com/github/simonsobs/pixell_tutorials/blob/master/pixell_map_manipulation.ipynb" target="_parent"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
+<!-- #endregion -->
+
+<!-- #region id="yPF5lzLN9DJB" -->
+# Map Manipulation with pixell
+
+
+*Written by the ACT Collaboration*
+
+---
+
+This  notebook, and the accompanying notebooks included in this set, are designed to help users who are new to working with [`pixell`](https://github.com/simonsobs/pixell/) get started with the package. As a set these notebooks will guide users through examples of how to read in and display maps, how to perform spherical harmonic transform and calculate simple spectra, how to transform the maps and how to study point sources in the maps.
+
+The `pixell` library allows users to load,
+manipulate and analyze maps stored in rectangular pixelization. It is
+mainly targeted for use with maps of the sky (e.g. CMB intensity and polarization maps, stacks of 21 cm intensity maps, binned galaxy positions or shear) in cylindrical projection.
+
+In this introductory notebook we will explain the basis for the sky maps used in `pixell` and walk through examples of how to read in CMB maps and inspect them. We'll also explain how to relate the pixels to locations on the sky and how to inspect smaller patches of the sky.
+<!-- #endregion -->
+
+```python id="GPzMLmYO98my"
+# Download the data needed for the notebook
+!wget -O act_planck_dr5.01_s08s18_AA_f150_night_map_d56_I.fits https://phy-act1.princeton.edu/public/zatkins/act_planck_dr5.01_s08s18_AA_f150_night_map_d56_I.fits
+```
+
+```python id="kDFKT4bz89Ra"
+# Install neccesary packages
+!pip install pixell
+```
+
+```python id="s3We41ht94xX"
+# Import packages
+from pixell import enmap, utils, enplot
+import numpy as np
+```
+
+<!-- #region id="RFGNWqMC9yb5" -->
+## About `pixell` and `ndmap` objects
+
+The `pixell` library supports manipulation of sky maps that are represented as 2-dimensional grids of rectangular pixels. The supported projection and pixelization schemes are a subset of the schemes supported by FITS conventions. In addition, we provide support for a *plain* coordinate system, corresponding to a Cartesian plane with identically shaped pixels (useful for true flat-sky calculations).
+
+In `pixell`, a map is encapsulated in an `ndmap`, which combines two objects: a numpy array (of at least two dimensions) whose two trailing dimensions correspond to two coordinate axes of the map, and a `wcs` object that specifies the World Coordinate System. The `wcs` component is an instance of Astropy’s `astropy.wcs.wcs.WCS` class. The combination of the wcs and the shape of the numpy array completely specifies the footprint of a map of the sky, and is called the `geometry`. This library helps with manipulation of `ndmap` objects in ways that are aware of and preserve the validity of the wcs information.
+
+The `wcs` information describes the correspondence between celestial coordinates (typically the Right Ascension, or RA, in the Equatorial system) and the pixel indices in the two right-most axes. In some projections, such as CEA or CAR, rows (and columns) of the pixel grid will often follow lines of constant declination (and RA). In other projections, this will not be the case.
+
+The WCS system is very flexible in how celestial coordinates may be associated with the pixel array. By observing certain conventions, we can make life easier for users of our maps. We recommend the following:
+
+The first pixel, index [0,0], should be the one that you would normally display (on a monitor or printed figure) in the lower left-hand corner of the image. The pixel indexed by [0,1] should appear to the right of [0,0], and pixel [1,0] should be above pixel [0,0]. (This recommendation originates in FITS standards documentation.)
+When working with large maps that are not near the celestial poles, RA should be roughly horizontal and declination should be roughly vertical. (It should go without saying that you should also present information “as it would appear on the sky”, i.e. with RA increasing to the left!)
+The examples in the rest of this document are designed to respect these two conventions.
+<!-- #endregion -->
+
+<!-- #region id="a34eVMiNhajB" -->
+### Creating an `ndmap`
+
+We can define an `ndmap` by using `pixell` to specify a geometry. For example, if we want to create an empty map we would do the following:
+
+
+<!-- #endregion -->
+
+```python id="fKrkMasI2tCN"
+# Define area of map using numpy
+# pixell wants the box in the following format:
+# [[dec_from, RA_from], [dec_to, RA_to]]
+# Note RA goes "from" left "to" right!
+box = np.array([[-5, 10], [5, -10]]) * utils.degree
+
+# Define a map geometry
+# the width and height of each pixel will be .5 arcmin
+shape, wcs = enmap.geometry(pos=box, res=0.5 * utils.arcmin, proj='car')
+
+# Create an empty ndmap
+empty_map = enmap.zeros((3,) + shape, wcs=wcs)
+```
+
+<!-- #region id="Q3g5_r_shIAl" -->
+## Inspecting maps
+
+The `ndmap` class extends the `numpy.ndarray` class, and thus has all of the usual attributes (`.shape`, `.dtype`, etc.) of an `ndarray`. It is likely that an `ndmap` object can be used in any functions that usually operate on an ndarray; this includes the usual numpy array arithmetic, slicing, broadcasting, etc.
+
+An `ndmap` must have at least two dimensions. The two right-most axes represent celestial coordinates (typically declination and RA, respectively). Maps can have arbitrary number of leading dimensions, but many of the `pixell` CMB-related tools interpret 3D arrays with shape `(ncomp,Ny,Nx)` as representing `Ny` x `Nx` maps of intensity, polarization Q and U Stokes parameters, in that order.
+<!-- #endregion -->
+
+```python id="5XRFJaPKokI0"
+# Check out the ndmap
+# does the shape make sense given the bounding box and resolution?
+print(empty_map.shape)
+print(empty_map.dtype)
+print(empty_map + np.pi)
+print(empty_map[0, 10:15, 90:95] == 0)
+```
+
+<!-- #region id="uFKarnbjor6r" -->
+The `ndmap` also has a new attribute, the `wcs`:
+<!-- #endregion -->
+
+```python id="8sb4i_JahHPd"
+print(empty_map.wcs)
+```
+
+<!-- #region id="6ccUogf63Vn1" -->
+It has everything we need to map pixels to and from the sky: the cylindrical projection we are using (`car`), the size of the pixels (in degrees), the location on the sky of a reference pixel (in degrees) and the location in the array of the reference pixel.
+
+NOTE: the `ndmap` data contains declination in the second-to-last axis and RA in the last axis, because this corresponds to the varying rows and columns of the array. But in the `wcs`, which is built by `astropy` outside of `pixell`, information is stored in the opposite order: RA first, then declination. Note the size of the pixels in RA is negative: the RA of pixels farther to the right in the array is *less*.
+
+We can also add a wcs to a numpy array. Sometimes this is necessary after performing a numpy operation on a ndmap as it might remove the `wcs`:
+<!-- #endregion -->
+
+```python id="qxAtK54Ll672"
+stacked_map = np.concatenate([empty_map, empty_map])
+
+print(stacked_map.shape)
+print(stacked_map.wcs)
+```
+
+<!-- #region id="gz67xNgbl9ef" -->
+Let's fix this:
+<!-- #endregion -->
+
+```python id="ZxuSKXvu3WxV"
+# Let's add a wcs to this data by doing this
+omap = enmap.ndmap(stacked_map, wcs)
+
+# Or this
+omap = enmap.samewcs(stacked_map, empty_map)
+
+# This does the same thing, but force-copies the data array.
+omap = enmap.enmap(stacked_map, wcs)
+```
+
+<!-- #region id="NvfzcZqb5XRZ" -->
+Note that `ndmap` and `samewcs` will not copy the underlying data array if they don’t have to; the returned object will reference the same memory used by the input array (as though you had done `numpy.asarray`). In contrast, `enmap.enmap` will always create a copy of the input data.
+<!-- #endregion -->
+
+<!-- #region id="1h_7mdbC5BvZ" -->
+## Reading a map from disk
+
+An entire map in `FITS` or `HDF` format can be loaded using `read_map`, which is found in the module `pixell.enmap`. The `enmap` module contains the majority of map manipulation functions.
+<!-- #endregion -->
+
+```python id="NX2A3eIk-y0J"
+imap = enmap.read_map('act_planck_dr5.01_s08s18_AA_f150_night_map_d56_I.fits')
+```
+
+<!-- #region id="vJp2SxIT59iD" -->
+Alternatively, one can select a rectangular region specified through its bounds using the box argument,
+<!-- #endregion -->
+
+```python id="VAJKp6aj6AqH"
+dec_min = -7 ; ra_min = 5 ; dec_max = 3 ; ra_max = -5
+
+# All coordinates in pixell are specified in radians
+box = np.array([[dec_min, ra_min], [dec_max, ra_max]]) * utils.degree
+
+imap_box = enmap.read_map("act_planck_dr5.01_s08s18_AA_f150_night_map_d56_I.fits", box=box)
+```
+
+<!-- #region id="POgT0x9Dp6nh" -->
+We can perform computations on the array like any other array:
+<!-- #endregion -->
+
+```python id="zQ1LqS_W-8Ul"
+print(np.mean(imap))
+```
+
+<!-- #region id="3XcvCCF6J9dq" -->
+## Visualizing maps
+
+We can use the `pixell.enplot` functions to visualize ndmaps. For example, if we want to plot this imap_box we first create the plot and then show it. This can also be done with a saved map on the command line (i.e. `enplot map_name.fits`). There are several plotting options built-in to the `enplot` function. They are listed in the documentation here: https://pixell.readthedocs.io/en/latest/reference.html#module-pixell.enplot
+<!-- #endregion -->
+
+```python id="EllLz41SKCoA"
+# Code to plot maps
+enplot.pshow(imap_box, colorbar=True, downgrade=2)
+```
+
+<!-- #region id="8PaE13yJIgDB" -->
+### Selecting regions of the sky
+<!-- #endregion -->
+
+<!-- #region id="trBrnei7vkVm" -->
+We may select a region of this map using array slicing. Note that wcs information is correctly adjusted when the array is sliced; for example the object returned by `imap[:50,:50]` is a view into the `imap` data attached to a new `wcs` object that correctly describes the footprint of the extracted pixels. BUT be cautious when assigning an extracted map to a new variable as operations on that variable will also affect the original map.
+
+<!-- #endregion -->
+
+```python id="ELOz2zvDgwkc"
+# view one section of the map. Note that wcs is updated
+print(f'Original Shape: {imap.shape}, Original WCS: {imap.wcs}')
+imap_extract = imap[50:100,50:100]
+print(f'New Shape: {imap_extract.shape}, New WCS: {imap_extract.wcs} \n')
+
+# Visualize the map cut out
+plot = enplot.plot(imap_extract)
+enplot.show(plot)
+
+# note that opperations on imap_extract also affects imap
+print(f'Original Mean: {np.mean(imap)}')
+imap_extract *= 1e6
+print(f'Mean after modification: {np.mean(imap)}')
+
+# Let's get the imap back to it's original state
+imap = enmap.read_map('act_planck_dr5.01_s08s18_AA_f150_night_map_d56_I.fits')
+```
+
+<!-- #region id="D_qX8KTsv9T0" -->
+Alternatively, We can select a coordinate box to creat a subplot around by defining the bottom left and top right coordinates. This opperation will also output the correct wcs for the submap. For example, if we want to create a 0.5x0.5 deg submap around the coordinates a RA of 5 and a DEC of -1 we would use the code below. Note that changing the submap will not affect the original map.
+<!-- #endregion -->
+
+```python id="UmhBZaNcIlWT"
+# First we need to define our coordinates and radius in radians (utils.degree converts degrees to radians)
+ra = 5. * utils.degree
+dec = -1. * utils.degree
+radius = 0.5 * utils.degree
+
+# Next we create our submap by defining a box in coordinate space
+imap_sub = imap.submap([[dec - radius, ra - radius], [dec + radius, ra + radius]])
+
+# Visualize the map corner
+plot = enplot.plot(imap_extract)
+enplot.show(plot)
+
+# Note that the shape and wcs are updated
+print(imap.shape, imap.wcs)
+print(imap_sub.shape, imap_sub.wcs, '\n')
+
+# Opperations on the submap do not affect the mean map
+print(np.mean(imap))
+imap_sub *= 1e6
+print(np.mean(imap))
+```
+
+<!-- #region id="6FkNv0VuKQLE" -->
+## Downgrading
+
+`enmap.downgrade` downgrades maps by an integer factor by averaging pixels. We can also downgrade by different integer factors in either direction.
+<!-- #endregion -->
+
+```python id="Oi6iv-1gItXo"
+# Using enmap.downgrade, careful with quadrature
+# TODO: What do you mean careful with qudrature?
+
+# Downgrade both directions by a factor of 2
+imap_downgrade = imap.downgrade(2)
+print(imap_downgrade.shape)
+
+# Downgrade in y by 2 and in x by 3
+imap_downgrade = imap.downgrade((2, 3))
+print(imap_downgrade.shape)
+```
+
+<!-- #region id="IvQMAk-rIo9C" -->
+## Relating pixels to the sky
+
+The geometry specified through `shape` and `wcs` contains all the information to get properties of the map related to the sky. `pixell` always specifies the Y coordinate first. So a sky position is often in the form `(dec,ra)` where `dec` could be the declination and `ra` could be the RA in radians in the equatorial coordinate system.
+
+The pixel corresponding to ra=8, dec=2 can be obtained like
+<!-- #endregion -->
+
+```python id="92wV1owtKXEJ"
+dec = 2
+ra = 8
+coords = np.deg2rad(np.array((dec,ra)))
+ypix, xpix = enmap.sky2pix(imap.shape, imap.wcs, coords)
+print(ypix, xpix)
+```
+
+<!-- #region id="90yyD1nZktXC" -->
+We can also use the map directly to perform this calculation:
+<!-- #endregion -->
+
+```python id="lDYISOgskqbA"
+ypix, xpix = imap.sky2pix(coords)
+print(ypix, xpix)
+```
+
+<!-- #region id="LK5QxpA4lFUo" -->
+We can pass a large number of coordinates for a vectorized conversion. In this case coords should have the shape (2,Ncoords), where Ncoords is the number of coordinates you want to convert, with the first row containing declination and the second row containing RA. For instance,
+<!-- #endregion -->
+
+```python id="U9d_4ifwk3s1"
+dec = np.array([-5, 0, 3])
+ra = np.array([5, 0, -5])
+
+coords = np.deg2rad(np.array((dec,ra)))
+print(coords.shape, '\n')
+
+ypix, xpix = imap.sky2pix(coords)
+print(ypix, xpix)
+```
+
+<!-- #region id="ifEDGvPIl_GR" -->
+Let's find the values of the map at these positions. Most of the work is done, but we must convert each position to an integer value as the returned pixel coordinates are in general fractional.
+<!-- #endregion -->
+
+```python id="0WqNmYoBlmDG"
+ypix = ypix.astype(int)
+xpix = xpix.astype(int)
+imap[ypix, xpix]
+```
+
+<!-- #region id="ThFxPh8knRa4" -->
+Similarly, pixel coordinates can be converted to sky coordinates
+<!-- #endregion -->
+
+```python id="sRfCrBaZmU6O"
+ypix = 100
+xpix = 100
+pixes = np.array([ypix, xpix])
+dec, ra = np.rad2deg(imap.pix2sky(pixes)) # pix2sky, sky2pix work in radians
+print(dec, ra)
+```
+
+<!-- #region id="jTBpsryuoBfA" -->
+Using the `enmap.posmap` function, you can get a map of shape `(2,Ny,Nx)` containing the coordinate positions in radians of each pixel of the map.
+<!-- #endregion -->
+
+```python id="GodVmtwLoE3I"
+posmap = imap.posmap()
+dec = posmap[0] # dec in radians
+ra = posmap[1] # ra in radians
+print(dec[0][0], ra[0][0])
+```
+
+<!-- #region id="KPcFKt39nwL3" -->
+Using the `enmap.pixmap` function, you can get a map of shape `(2,Ny,Nx)` containing the integer pixel coordinates of each pixel of the map.
+<!-- #endregion -->
+
+```python id="McXDQIFUnjo_"
+pixmap = imap.pixmap()
+pixy = pixmap[0]
+pixx = pixmap[1]
+print(pixy[1][0], pixx[0][1])
+```
+
+<!-- #region id="m9nZ3yyCmDn4" -->
+## Exercise: stacking on clusters (based on [this notebook](https://github.com/ACTCollaboration/DR4_DR5_Notebooks/blob/master/Notebooks/Section_4_visualize_objects.ipynb); see also [this notebook](https://github.com/ACTCollaboration/DR6_Notebooks/blob/main/ACT_DR6_ymap_stacking.ipynb) later in the course!)
+
+We will apply what we've learned to do a common analysis technique with our ACT data: stacking maps on galaxy clusters. We might want to do this in order to learn about the gas distribution in and around clusters, or to tease out their mass from weak lensing. To do this we will need a catalogue of cluster locations and more ACT data:
+<!-- #endregion -->
+
+```python id="1vklQ3KLG5h-"
+# this is a full ACT DR5 map, downgraded so that it doesn't take up too much
+# memory
+!wget -O act_planck_dr5.01_s08s18_AA_f150_night_map_dg_I.fits https://phy-act1.princeton.edu/public/zatkins/act_planck_dr5.01_s08s18_AA_f150_night_map_dg_I.fits
+
+# this is the ACT DR5 tSZ cluster catalogue...how did we make it??
+!wget https://astro.ukzn.ac.za/~mjh/ACTDR5/v1.0b3/DR5_cluster-catalog_v1.0b3.fits
+```
+
+```python id="djNK_VWUfQaA"
+import astropy.table as atpy
+
+# get the map
+imap = enmap.read_map('act_planck_dr5.01_s08s18_AA_f150_night_map_dg_I.fits')
+
+# Read in ras and decs from a cluster catalog
+tab = atpy.Table().read('DR5_cluster-catalog_v1.0b3.fits', format='fits')
+
+# convert them to radians
+ras = tab['RADeg'] * utils.degree
+decs = tab['decDeg'] * utils.degree
+
+print(ras.shape, decs.shape)
+```
+
+<!-- #region id="UBO_lOV9MZhF" -->
+What does the full ACT DR5 + Planck data look like? Here we are only using the temperature data, not polarization:
+<!-- #endregion -->
+
+```python id="f4wVEUXBMffv"
+enplot.pshow(imap, downgrade=8, colorbar=True, ticks=15, range=300)
+```
+
+<!-- #region id="Yx4RrgTDMPU5" -->
+Notice the bright band of the milky way galaxy cutting across the edge of the map. It's not on the equator because the ACT data is natively in celestial coordinates (we can play around with this later). The rest of the blobby pattern, with blobs that are about a degree in size, is the CMB!
+
+Let's cut out a pixel of size .5 degrees around a random cluster and take a look:
+<!-- #endregion -->
+
+```python id="B3LG8I5fMXfm"
+# try this for a bunch of different cluster indexes!
+n = 128
+radius = 0.5 * utils.degree
+
+imap_sub = imap.submap([[decs[n] - radius, ras[n] - radius], [decs[n] + radius, ras[n] + radius]])
+
+enplot.pshow(imap_sub, upgrade=16, colorbar=True, grid=False)
+```
+
+<!-- #region id="rftIfgozQb0a" -->
+Not a whole lot there? This is why a stack makes sense: if clusters generally look similar in the map, but their signal is very faint, we can average their locations and try to beat-down the noise. What is the source of "noise" in this case?
+<!-- #endregion -->
+
+<!-- #region id="vys_pqMxNd31" -->
+
+<!-- #endregion -->
+
+```python id="LL7jxTqoG_YR"
+stack = 0
+num = 0
+for n in range(len(decs)):
+  stack += imap.submap([[decs[n] - radius, ras[n] - radius], [decs[n] + radius, ras[n] + radius]])
+  num += 1
+
+  if n % 500 == 0: print(f'We have done {n} clusters')
+```
+
+```python id="WFKzvLFpR8kb"
+enplot.pshow(stack/num, upgrade=16, colorbar=True, grid=False)
+```
+
+<!-- #region id="L0aP2HylR_1J" -->
+Nice! Clusters do kind of look the same in the map: they look like a cold spot. Why?
+
+Notice anything else weird about the average cluster, maybe about it's shape? Does this make sense to you? Why or why not?
+<!-- #endregion -->
+
+
+---
+
+# pixell_matched_filtering.md
+
+---
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .md
+      format_name: markdown
+      format_version: '1.3'
+      jupytext_version: 1.17.2
+  kernelspec:
+    display_name: Python 3
+    name: python3
+---
+
+<!-- #region id="yPF5lzLN9DJB" -->
+# Matched Filtering with pixell
+
+*Written by the ACT Collaboration*
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/simonsobs/pixell_tutorials/blob/master/pixell_matched_filtering.ipynb)
+
+---
+
+This notebook, and the accompanying notebooks included in this set, are designed to help users who are new to working with [`pixell`](https://github.com/simonsobs/pixell/) get started with the package. As a set these notebooks will guide users through examples of how to read in and display maps, how to perform spherical harmonic transform and calculate simple spectra, how to transform the maps and how to study point sources in the maps.
+
+The `pixell` library allows users to load,
+manipulate and analyze maps stored in rectangular pixelization. It is
+mainly targeted for use with maps of the sky (e.g. CMB intensity and polarization maps, stacks of 21 cm intensity maps, binned galaxy positions or shear) in cylindrical projection.
+
+This notebook will explain the basics of matched filtering a map, and how to perform a flux measurement of point sources in that map.
+
+We will make fake random catalogs, so we don't need any extra data.
+<!-- #endregion -->
+
+```python id="kDFKT4bz89Ra" colab={"base_uri": "https://localhost:8080/"} outputId="bbf2f184-090e-421e-c1a8-7360a4a21444"
+!pip install pixell
+```
+
+```python id="s3We41ht94xX"
+# Import packages
+import numpy as np
+from pixell import enmap, utils, uharm, analysis, curvedsky, enplot, reproject
+import matplotlib.pyplot as pl
+import healpy as hp
+```
+
+```python id="EcxQr34cSae-"
+def eshow(x,**kwargs):
+    ''' Define a function to help us plot the maps neatly '''
+    plots = enplot.get_plots(x, **kwargs)
+    enplot.show(plots, method = "ipython")
+```
+
+<!-- #region id="RFGNWqMC9yb5" -->
+**Reading maps from disk**
+
+For more details on how to use maps in `pixell` take a look at the [map manipulation notebook](https://github.com/simonsobs/pixell_tutorials/blob/master/Pixell_map_manipulation.ipynb)!
+<!-- #endregion -->
+
+<!-- #region id="_vJ5OYvI9yjp" -->
+**Matched filtering** is used to detect point sources in astronomical images by correlating the point source profile with the image. The matched filter output at each pixel gives an estimate of the flux density $F$ and $S/N$ of a point source at that location:
+
+\begin{align}
+    F & =\frac{\rho}{\kappa}=\frac{B^{T}U^{-1}\hat{m}}{diag(B^{T}U^{-1}B)}\\
+    S/N&=\frac{\rho}{\sqrt{\kappa}}=\frac{B^{T}U^{-1}\hat{m}}{\sqrt{diag(B^{T}U^{-1}B)}}
+\end{align}
+
+where $\kappa$ and $\rho$ are respectively the inverse variance and inverse variance weighted flux density. $B$ is the response matrix that takes a single pixel in flux density unit to beam-convolved structures in CMB temperature unit. $U$ is the covariance matrix of noise $u$ in $\hat{m}$, $u$ considered here is everything that is not a point source, including instrumental and atmospheric noise, clusters and CMB signals.
+
+<!-- #endregion -->
+
+<!-- #region id="5Nv6TT7iLRrz" -->
+**First example** Our first example will be to create a small sky map, put a point source in the center, add different noise models, and measure the flux.
+<!-- #endregion -->
+
+```python id="zQ1LqS_W-8Ul" colab={"base_uri": "https://localhost:8080/", "height": 334} outputId="e130ee92-d53f-45fb-df94-87f384488b3e"
+# We set up a map with a given geometry (a 2x2 square degrees stamp with 0.5 arcmin pixels)
+shape, wcs = enmap.geometry(np.array([[-1,1],[1,-1]])*utils.degree, res=0.5*utils.arcmin)
+pixarea    = enmap.pixsizemap(shape, wcs)
+
+# Our experiment will have a Gaussian beam with FWHM=2.2 arcmin
+#Omega_b is the beam solid angle for a Gaussian beam in sr
+bsigma     = 2.2*utils.fwhm*utils.arcmin
+Omega_b    = (np.pi / 4 / np.log(2)) * (2.2*utils.arcmin)**2
+
+# We will put a source at the center of the map (ra=0 deg, dec=0 deg) with a flux density of 10 mJy
+# signal is a map with the profile of the point source in mJy/sr
+pos        = [0.0,0.0]
+signal     = (10/Omega_b) * np.exp(-0.5*enmap.modrmap(shape, wcs, pos)**2/bsigma**2)
+
+# We define a Unified Harmonic Transform (uht) object, that will take care of the
+#map<->harmonic transformations for us under the hood, either using FFT or SHT.
+uht        = uharm.UHT(shape, wcs)
+
+# This is the harmonic transform of the beam in 2D (since it is Gaussian we assume symmetry around the axis)
+beam       = np.exp(-0.5*uht.l**2*bsigma**2)
+
+# We need a conversion factor between temperature units (K) and spectral radiance (Jy/sr). We assume we are observing at 90 GHz
+fconv      = utils.dplanck(90e9, utils.T_cmb)/1e3 # uK -> mJy/sr
+
+# we need to transform our signal map which is in mJy/sr to uK using the conversion factor.
+signal /= fconv # this will leave our map in uK units
+
+#Let's see the signal only map
+eshow(signal,**{"range":10, "colorbar":True})
+```
+
+<!-- #region id="seeg2E3xNzBe" -->
+**White noise** Let's simulate white noise of 10 uK*arcmin
+<!-- #endregion -->
+
+```python colab={"base_uri": "https://localhost:8080/"} id="G02yaPgDNqBv" outputId="0a4175f4-9a37-43e0-99e6-4056313d12c0"
+# This is the inverse variance, which is constant across pixels
+ivar       = 10**-2*pixarea/utils.arcmin**2
+noise      = enmap.rand_gauss(shape, wcs) * np.sqrt(1/ivar)
+
+# we add the noise to the signal. Remember that signal is already in uK units from above
+map        = signal + noise
+
+# The analysis module contains many matched filter calculators
+# In this case we use a fuction that receives a map of inverse covariances
+rho, kappa = analysis.matched_filter_white(map*fconv, beam, ivar/fconv**2, uht)
+flux  = rho/kappa
+dflux = kappa**-0.5
+
+print('Our measured flux is %.3f +- %.3f mJy'%(flux.at(pos)[0],dflux.at(pos)[0]))
+```
+
+```python id="vH8L7rWXSBvr" colab={"base_uri": "https://localhost:8080/", "height": 631} outputId="3e1fe43e-23b7-42ff-ef32-75c2b874bf4b"
+# we plot our flux map, and our signal/noise map
+eshow(flux, **{"range":10, "colorbar":True})
+eshow(flux/dflux, **{"range":15, "colorbar":True})
+```
+
+<!-- #region id="d3oYGVeQYA_E" -->
+**Using a noise spectrum instead of a noise map**
+<!-- #endregion -->
+
+```python colab={"base_uri": "https://localhost:8080/"} id="LX5dOfg4Sj4T" outputId="e9daf4fa-11be-469e-a2e3-990c2ba3f9e1"
+# Now we define a noise spectrum instead of inputting a map. In this case we
+# will still simulate white noise, so this iN spectrum is a constant value
+iN = 10**-2/utils.arcmin**2
+
+# This matched filter function receives a noise spectra as input
+rho, kappa = analysis.matched_filter_constcov(map*fconv, beam, iN/fconv**2, uht)
+flux  = rho/kappa # kappa just a number in this case, and hence the errorbar will also be a single number
+dflux = kappa**-0.5
+
+print('Our measured flux is %.3f +- %.3f mJy'%(flux.at(pos)[0],dflux))
+```
+
+<!-- #region id="SLg1BZ4FZ314" -->
+**Using both a noise map and noise spectrum** This method supports a noise model given by $N^{-1} = \sqrt{\rm{(ivar)}} C^{-1} \sqrt{\rm{(ivar)}}$, where $\rm{(ivar)}$ is the inverse variance and $C^{-1}$ is the inverse of the noise spectrum. This represents correlated noise described by iC that's modulated spatially by ivar.
+<!-- #endregion -->
+
+```python colab={"base_uri": "https://localhost:8080/"} id="TvFmARLwZdtm" outputId="d6c3d361-d514-4453-b7ac-8151a1dfe9bd"
+# The noise units are only in ivar, so the white noise spectrum is just a dimensionless 1
+iN = 1
+
+# This matched filter function receives a noise spectra and a noise map as inputs
+rho, kappa = analysis.matched_filter_constcorr_lowcorr(map*fconv, beam, ivar/fconv**2, iN, uht)
+flux  = rho/kappa
+dflux = kappa**-0.5
+
+print('Our measured flux is %.3f +- %.3f mJy'%(flux.at(pos)[0],dflux.at(pos)[0]))
+```
+
+<!-- #region id="h7aYtxafc_si" -->
+**1/f noise** Let's try a more realistic 1/f noise now
+<!-- #endregion -->
+
+```python id="ArmXUetRcyN2"
+# base noise depth of 10 uK * arcmin, this is the base of white noise
+ivar  = 10**-2*pixarea/utils.arcmin**2
+# spatial modulation with 1 arcmin wavelength horizontal sine wave
+# this represents different observing depths in different parts of the sky like a real experiment
+ivar *= (1+0.9*np.sin(enmap.posmap(shape, wcs)[0]/(1*utils.arcmin)))
+
+# We model the noise power spectrum as a 1/f with l_knee=2000, alpha_knee=-3.
+# We only include the 1/f part, the white noise part is done separately
+l_arr = np.arange(8000+1)
+N    = (10**2 * utils.arcmin**2) * ( ((l_arr+0.5)/2000)**-3 ) # this is for generating the realization
+iN   = 1/(1 + ((uht.l+0.5)/2000)**-3) # this is in 2D, to use in the matched filter
+# we generate a 1/f with a 10 uK*arcmin base white noise
+noise_oof = enmap.rand_map(shape, wcs, N, spin=0)
+
+# we coadd the white noise and the 1/f noise
+noise_atm = enmap.rand_gauss(shape, wcs)*np.sqrt(1/ivar) + noise_oof
+
+map = signal + noise_atm
+```
+
+```python colab={"base_uri": "https://localhost:8080/", "height": 334} id="PXvVgmIE3jMG" outputId="16b9d8b8-c659-452b-c296-64ca9a475ebc"
+# Let's look at how the total map looks like
+eshow(map, **{"colorbar":True})
+```
+
+```python colab={"base_uri": "https://localhost:8080/", "height": 351} id="Iaf18e7cblMR" outputId="651bf87d-79a0-43c1-e7ae-53b589d8563a"
+# We estimate the flux, using the noise theory spectrum and the ivar map
+rho, kappa = analysis.matched_filter_constcorr_lowcorr(map*fconv, beam, ivar/fconv**2, iN, uht)
+flux  = rho/kappa
+dflux = kappa**-0.5
+print('Our measured flux is %.3f +- %.3f mJy'%(flux.at(pos)[0],dflux.at(pos)[0]))
+
+eshow(flux, **{"range":10, "colorbar":True})
+```
+
+<!-- #region id="BYZ8BNVV4Ut-" -->
+**Measure the spectrum empirically** Now instead of a model iN for the noise spectrum, we will measure it directly from the map
+<!-- #endregion -->
+
+```python colab={"base_uri": "https://localhost:8080/"} id="e9k9E4-D1vKu" outputId="c06fc9cf-9d7f-4ca3-aaa1-4f116f6b3f4e"
+# We measure the spectra from the map. First, we will ignore the point source in the center and include it in the spectra calculation
+iNemp  = 1/(np.mean(np.abs(uht.map2harm(map*ivar**0.5))**2,0) / map.pixsize())
+
+rho, kappa = analysis.matched_filter_constcorr_dual(map*fconv, beam, ivar/fconv**2, iNemp, uht)
+flux  = rho/kappa
+dflux = kappa**-0.5
+print('Our measured flux is %.3f +- %.3f mJy'%(flux.at(pos)[0],dflux.at(pos)[0]))
+```
+
+```python id="lyIiKnZ3eDEV"
+# We can also mask the point source at the center
+
+#helper function to create a circular mask
+def cmask(dy, dx, center=None, radius=None):
+    if center is None: # use the middle of the image
+        center = (int(dx/2), int(dy/2))
+    if radius is None: # use the smallest distance between the center and image walls
+        radius = min(center[0], center[1], dx-center[0], dy-center[1])
+    Y, X = np.ogrid[:dy, :dx]
+    radmap = np.sqrt((X - center[0])**2 + (Y-center[1])**2)
+    mask = radmap <= radius
+    return np.logical_not(mask)
+dx,dy = map.shape
+```
+
+```python colab={"base_uri": "https://localhost:8080/", "height": 472} id="0Fq7Bq7zFPgN" outputId="a63a7c9a-3b23-4e1e-b668-96bf15841f03"
+# We create a mask with a radius of 6 pixels around the center
+mask = cmask(dy,dx, radius=6)
+
+# Let's look at the mask
+pl.imshow(mask)
+```
+
+```python colab={"base_uri": "https://localhost:8080/"} id="-v0mQEJpE7IK" outputId="7e3f4814-7fc3-406e-bc9d-28a911bc113a"
+# We measure the spectra from the map like before. This time we multiply by the mask
+iNemp  = 1/(np.mean(np.abs(uht.map2harm(map*mask*ivar**0.5))**2,0) / map.pixsize())
+
+rho, kappa = analysis.matched_filter_constcorr_dual(map*fconv, beam, ivar/fconv**2, iNemp, uht)
+flux  = rho/kappa
+dflux = kappa**-0.5
+print('Our measured flux is %.3f +- %.3f mJy'%(flux.at(pos)[0],dflux.at(pos)[0]))
+```
+
+<!-- #region id="zaeNUXeceWYH" -->
+**Second example** Our second example will be simulating multiple point sources in a big map, and stack them. We will generate random coordinates where we place the sources and assume that we are observing the same source with an "absolute" flux of 3 mJy at different coordinates and at different random distances. The measured fluxes will change depending on the distance to each source. This cell may take ~5 min to compute.
+<!-- #endregion -->
+
+```python id="AczSZDQqexID"
+Nsources = 100
+
+# We generate a big map. We will make a stripe 60 degrees wide by 20 degrees tall
+shape, wcs = enmap.geometry(np.array([[-10,30],[10,-30]])*utils.degree, res=0.5*utils.arcmin)
+pixarea    = enmap.pixsizemap(shape, wcs)
+signal     = enmap.zeros(shape, wcs=wcs)
+
+# We will store the random coordinates and distances for each source.
+ra_sources = np.zeros(Nsources)
+dec_sources = np.zeros(Nsources)
+dist_sources = np.zeros(Nsources)
+
+for n_source in range(Nsources):
+  # this is not the proper way of generating uniformly sampled sources in the surface of the sphere, but for our purposes it is fine
+  pos        = np.array([np.random.uniform(-10,10), np.random.uniform(-30,30)]) * utils.degree
+  # The source will have a flux of 3 mJy at a distance of 1, and we generate random distances from 0.5 to 20.
+  dist       = np.random.uniform(0.5, 20)
+  signal     += 3 * (1/dist)**2 * (1/Omega_b) * np.exp(-0.5*enmap.modrmap(shape, wcs, pos)**2/bsigma**2)
+  # Save to arrays
+  ra_sources[n_source] = pos[1]
+  dec_sources[n_source] = pos[0]
+  dist_sources[n_source] = dist
+
+# we need to transform our signal map which is in mJy/sr to uK using the conversion factor.
+signal /= fconv # this will leave our map in uK units
+```
+
+```python id="kkzU7q6VnFrs"
+# Let's generate a 1/f noise
+
+# base noise depth of 10 uK * arcmin, this is the base of white noise
+ivar  = 10**-2*pixarea/utils.arcmin**2
+# spatial modulation with 5 arcmin wavelength horizontal sine wave
+# this represents different observing depths in different parts of the sky like a real experiment
+ivar *= (1+0.9*np.sin(enmap.posmap(shape, wcs)[1]/(5*utils.arcmin)))
+
+# We model the noise power spectrum as a 1/f with l_knee=2000, alpha_knee=-3.
+# We only include the 1/f part, the white noise part is done separately
+l_arr = np.arange(8000+1)
+N    = (10**2 * utils.arcmin**2) * ( ((l_arr+0.5)/2000)**-3 ) # this is for generating the realization
+# we generate a 1/f with a 10 uK*arcmin base white noise
+noise_oof = enmap.rand_map(shape, wcs, N, spin=0)
+
+# We multiply by ivar to generate our final noise realization
+noise_atm = enmap.rand_gauss(shape, wcs)*np.sqrt(1/ivar) + noise_oof
+
+map = signal + noise_atm
+```
+
+```python colab={"base_uri": "https://localhost:8080/", "height": 394} id="SjbRKWS4jV_R" outputId="c5af5cce-d250-4a9e-e440-8ceeb1192eed"
+# Let's look at the map
+params = {"colorbar":True, "downgrade":8, "mask":0, "ticks":10}
+eshow(map, **params)
+```
+
+```python id="LNJEqoC5m37v"
+# Let's apply a matched filter and look at the flux map
+uht        = uharm.UHT(shape, wcs)
+beam       = np.exp(-0.5*uht.l**2*bsigma**2)
+iN   = 1/(1 + ((uht.l+0.5)/2000)**-3) # this is in 2D, to use in the matched filter
+
+rho, kappa = analysis.matched_filter_constcorr_dual(map*fconv, beam, ivar/fconv**2, iN, uht)
+```
+
+```python colab={"base_uri": "https://localhost:8080/", "height": 394} id="yHQsMolxpt6T" outputId="0d787b65-c827-443e-d725-57cd601a2fc4"
+# Let's look at the flux map
+params = {"colorbar":True, "downgrade":8, "mask":0, "ticks":10}
+eshow(rho / kappa, **params)
+```
+
+<!-- #region id="Fx4tVzKIb1c_" -->
+As you can see, the sin pattern we included to simulate spatial modulation is visible. Also, point sources are not easy to see, however when we stack their positions, they will be obvious to see.
+<!-- #endregion -->
+
+<!-- #region id="GE07pOHMq8RN" -->
+**Explanation of stacking** We model the flux for source $i$ as $f_i = a R_i + n_i$, where $n_i$ is the noise of the flux, $R_i$ is the weight between transient $i$ and the reference transient, and $a$ is the detection statistic we are optimizing for (i.e. the coadded flux). In our case, we are assuming we are stacking the same type of source (with a fixed luminosity) but flux changing with the square distance law as these objects are found closer or further away. The inverse covariance of $f_i$ is $\kappa_i$. The maximum solution of this equation is given by
+\begin{equation}
+\hat{a} = \frac{\sum_i R_i \kappa_i f_i}{\sum_i R_i^2 \kappa_i}
+\end{equation}
+for $a$. This estimator has inverse covariance $A$ given by
+\begin{equation}
+\hat{A} = \sum_i R_i^2 \kappa_i \text{.}
+\end{equation}
+In our particular case, the weight $R_i$ is proportional to the inverse distance squared to transient $i$.
+<!-- #endregion -->
+
+```python id="j0yR4Ih0q_09"
+# We define an empty 2x2 degrees empty stamp, and we will project the cutouts from the big map into this empty stamp.
+
+shape_stack, wcs_stack = enmap.geometry(np.array([[-1,1],[1,-1]])*utils.degree, res=0.5*utils.arcmin)
+rho_stack     = enmap.zeros(shape_stack, wcs=wcs_stack)
+kappa_stack   = enmap.zeros(shape_stack, wcs=wcs_stack)
+
+for n_source in range(Nsources):
+  pos = np.array([dec_sources[n_source],ra_sources[n_source]]) # this coordinates are already in radians
+
+  # we cutout a rho and kappa stamp around the source
+  rho_i = reproject.thumbnails(rho, np.reshape(pos,(1,2)), oshape=shape_stack, owcs=wcs_stack, r=1*utils.degree)[0]
+  kappa_i = reproject.thumbnails(kappa, np.reshape(pos,(1,2)), oshape=shape_stack, owcs=wcs_stack, r=1*utils.degree)[0]
+
+  # this is the ratio with respect to the reference at distance 1.
+  # We will assume our measured distance is the correct distance plus a random 4% error
+  R_i = (1 / (dist_sources[n_source]*(1+np.random.normal(scale=0.04))))**2
+
+  rho_stack += R_i * kappa_i * rho_i / kappa_i
+  kappa_stack += R_i**2 * kappa_i
+a = rho_stack / kappa_stack
+da = kappa_stack ** -0.5
+```
+
+```python colab={"base_uri": "https://localhost:8080/", "height": 351} id="_ZMiaF0TvDsY" outputId="c086f2a5-6362-4573-f6bb-1a752a440d13"
+# We measure the flux from the stacked sources at the center of the map, and we plot the S/N
+pos = [0,0]
+print('Our measured stacked flux is %.3f +- %.3f mJy, which is a %.1f sigma detection'%(a.at(pos)[0],da.at(pos)[0],a.at(pos)[0]/da.at(pos)[0]))
+
+params = {"colorbar":True, "mask":0, "ticks":0.5}
+eshow(a / da, **params)
+```
+
+<!-- #region id="MJg5Z31ePD_G" -->
+Even though the individual sources are barely visible in the big map, if we have a rough idea of where they are and how much flux we should expect from them (e.g. we know their distance squared), we can stack them and recover their expected flux.
+<!-- #endregion -->
+
+```python id="19Fp5CfAPhZn"
+
+```
+
+
+---
+
+# pixell_reprojection_and_resampling.md
+
+---
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .md
+      format_name: markdown
+      format_version: '1.3'
+      jupytext_version: 1.17.2
+  kernelspec:
+    display_name: Python 3
+    name: python3
+---
+
+<!-- #region id="yPF5lzLN9DJB" -->
+# Reprojecting and Resampling Maps with pixell
+
+*This notebook was written by the ACT Collaboration*
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/simonsobs/pixell_tutorials/blob/master/pixell_reprojection_and_resampling.ipynb)
+
+
+---
+This notebook, and the accompanying notebooks included in this set, are designed to help users who are new to working with [`pixell`](https://github.com/simonsobs/pixell/) get started with the package. As a set these notebooks will guide users through examples of how to read in and display maps, how to perform spherical harmonic transform and calculate simple spectra, how to transform the maps and how to study point sources in the maps.
+
+The `pixell` library allows users to load,
+manipulate and analyze maps stored in rectangular pixelization. It is
+mainly targeted for use with maps of the sky (e.g. CMB intensity and polarization maps, stacks of 21 cm intensity maps, binned galaxy positions or shear) in cylindrical projection.
+
+In this notebook, we will cover projecting the map to different geometries, cutting out smaller patches of the map (i.e. "postage stamp" generation), as well as reprojecting (converting) the CAR maps to `HEALPix`.
+<!-- #endregion -->
+
+```python colab={"base_uri": "https://localhost:8080/"} id="GPzMLmYO98my" outputId="c7ed8459-8473-425d-d6ea-fec0d2fd09c7"
+# Download the data needed for the notebook - for now it wget's a DR4 map
+!wget -O act_planck_dr5.01_s08s18_AA_f150_night_map_d56_I.fits https://phy-act1.princeton.edu/public/zatkins/act_planck_dr5.01_s08s18_AA_f150_night_map_d56_I.fits
+
+
+```
+
+```python colab={"base_uri": "https://localhost:8080/"} id="y8V_OhgCkurr" outputId="c0af10f3-db29-46ef-be3d-3df1ef63c7b5"
+
+# Download the Planck 143 GHz map -- it takes a while!
+# !wget https://irsa.ipac.caltech.edu/data/Planck/release_2/all-sky-maps/maps/HFI_SkyMap_143_2048_R2.02_full.fits
+
+#smaller Planck map
+!wget https://irsa.ipac.caltech.edu/data/Planck/release_2/all-sky-maps/maps/HFI_SkyMap_143_2048_R2.02_nominal.fits
+```
+
+```python colab={"base_uri": "https://localhost:8080/"} id="kDFKT4bz89Ra" outputId="b1c71930-dffd-4afc-a475-3980a67d553c"
+# Install neccesary packages
+!pip install pixell==0.20.4
+```
+
+```python id="s3We41ht94xX"
+# Import packages
+import numpy as np
+import healpy as hp
+import pixell
+from pixell import enmap, enplot, utils, coordinates, reproject, wcsutils
+import matplotlib
+from matplotlib import cm
+```
+
+```python colab={"base_uri": "https://localhost:8080/", "height": 55} id="PhgGtF_YbdOC" outputId="f074dd24-e5ef-4994-e91d-d8b201e88988"
+pixell.__version__
+```
+
+<!-- #region id="RFGNWqMC9yb5" -->
+## **Reading maps from disk**
+
+For more details on how to use maps in `pixell`  take a look at the map manipulation notebook!
+<!-- #endregion -->
+
+```python id="NX2A3eIk-y0J"
+#read the map
+map_act = enmap.read_map("act_planck_dr5.01_s08s18_AA_f150_night_map_d56_I.fits")
+```
+
+```python colab={"base_uri": "https://localhost:8080/"} id="y-kIjpJelJRQ" outputId="53e7638d-8178-446f-82a0-fef6bf67e403"
+# print map's shape and wcs (world coordinate system)
+print(map_act.shape, map_act.wcs)
+```
+
+```python colab={"base_uri": "https://localhost:8080/", "height": 309} id="yJMlBgCJlMCF" outputId="0b0c54ea-9ff4-45c5-9e82-aa9d1e109cc4"
+# show the map
+enplot.pshow(map_act, downgrade=4, colorbar=True) #downgrade the map, so it takes less time to plot, and include the colorbar
+```
+
+<!-- #region id="_vJ5OYvI9yjp" -->
+## **Projecting to different sky geometries**
+<!-- #endregion -->
+
+<!-- #region id="0MCIRMuGk_3v" -->
+Let's start with projecting the ACT map patch onto a new map.
+
+First, we create an empty map that covers a different sky area than the original map (see the map manipulation notebook on how to create a map with an arbitrary shape and wcs).
+<!-- #endregion -->
+
+```python colab={"base_uri": "https://localhost:8080/"} id="BqU3Scs21vFD" outputId="8cae092a-f6cc-4b8c-b7f4-0420b7feeab6"
+# Define area of the new map (wider than the original map)
+box = np.array([[-10,46],[7,-13]]) * utils.degree
+
+# Define map geometry
+shape_new, wcs_new = enmap.geometry(pos=box,res=0.5 * utils.arcmin,proj='car')
+print(shape_new)
+
+# Create an empty ndmap
+empty_map = enmap.empty((3,) + shape_new, wcs=wcs_new)
+
+# Show the empty map
+#eshow(empty_map[0], **{"downgrade": 4, "colorbar":True}) #downgrade the map, so it takes less time to plot, and include the colorbar
+```
+
+```python colab={"base_uri": "https://localhost:8080/"} id="WvCZ5ymu8brx" outputId="1a1bd367-5a4c-4132-9a0c-3b9d9a7d2422"
+# Project the original map onto the new map
+map_project = enmap.project(map_act, empty_map.shape, wcs=wcs_new)
+map_project.shape
+```
+
+<!-- #region id="kkiog7dAHq4Z" -->
+Show the ACT map projected onto a new (wider) patch
+<!-- #endregion -->
+
+```python colab={"base_uri": "https://localhost:8080/", "height": 374} id="EglIUrpr-yhW" outputId="f3a2f0b5-d318-4be8-c8da-c061dc6e9493"
+enplot.pshow(map_project, downgrade=4, colorbar=True) #downgrade the map, so it takes less time to plot, and include the colorbar
+```
+
+<!-- #region id="NAatZi0znRCy" -->
+Now let's try to extract a smaller patch of the original map, given some shape.
+<!-- #endregion -->
+
+```python id="hyKRidiEnTSh"
+# Define the shape to extract (# 1/4 of the original map, bottom left corner of the original map)
+shape_extract = (map_act.shape[0]/2, map_act.shape[1]/2)
+
+# Extract the patch from the original map
+map_extract = enmap.extract(map_act, shape = shape_extract, wcs = map_act.wcs) #keep the same wcs
+```
+
+```python colab={"base_uri": "https://localhost:8080/", "height": 271} id="d0JWS1QrnVBW" outputId="edca3511-f436-4a25-ee61-3cae63d93a07"
+# Compare the extracted and original map
+enplot.pshow(map_extract, downgrade=4, colorbar=True, ticks=5)
+```
+
+<!-- #region id="FIgq7BMw9ysb" -->
+## **Getting small cutouts of the map**
+<!-- #endregion -->
+
+<!-- #region id="BkxhiapnlxmC" -->
+Similarly, we can get smaller cutout of the map centered at a given location (which is useful for stacking analyses) with `pixell`'s `reproject.thumbnails` function.
+
+The default projection is `tan` (`proj=tan`), where the thumbnail image is projected onto a local tangent plane, removing the effect of size and shape distortions in the input map.
+<!-- #endregion -->
+
+```python id="e1RRZHjoOH5P"
+# Define the central coordinates and radius of the patch
+r = 30*utils.arcmin # radius, in arcminutes
+coords = np.deg2rad([ -5., 0.]) # central coordinates, [dec, ra], in radians
+
+# Thumbstack
+cutout = reproject.thumbnails(map_act, coords = coords, r=r)
+```
+
+```python colab={"base_uri": "https://localhost:8080/", "height": 335} id="ZTOeWg0Yl1wM" outputId="704bf776-924c-43ec-a883-bc4b5ceda879"
+enplot.pshow(cutout, colorbar=True, ticks=40})
+```
+
+<!-- #region id="WfrhlLOTOLI4" -->
+## **Projecting to and from `HEALPix`**
+
+
+
+<!-- #endregion -->
+
+<!-- #region id="lWAMTZ2kl5DH" -->
+`pixell` allows to reproject (convert) maps from CAR pixelization to `HEALPix`, and back. This can be done using the [reproject](https://github.com/simonsobs/pixell/blob/master/pixell/reproject.py#L115) library.
+
+
+Let's start by converting the ACT CAR map to `HEALPix` with `reproject.map2healpix`, optionally including a rotation from Celestial/Equatorial (native ACT) to Galactic (native Planck) coordinates.
+<!-- #endregion -->
+
+```python id="wbcqKbNGl74Y" colab={"base_uri": "https://localhost:8080/", "height": 588} outputId="f48f258f-1689-4799-9443-bebf0fb32b66"
+#reproject the ACT map to Healpix map of a given nside
+NSIDE = 2048 # the nside of the healpix map
+ELLMAX = 4000 #the reprojection operation will be done up to the chosen ellmax
+
+map_hp = reproject.map2healpix(map_act, nside=NSIDE, lmax=ELLMAX)
+#map_hp = reproject.map2healpix(map_act, nside=NSIDE, lmax=ELLMAX, rot="cel,gal") #optionally include rotation
+
+#Normalize plots to this value
+rang = 300
+hp.mollview(map_hp, title= "Mollview ACT D56 in Healpix", min = -rang, max = rang, cmap = cm.get_cmap('RdYlBu'))
+```
+
+<!-- #region id="u87jICizl9yf" -->
+Let's look at this `HEALPix` map cutout in Cartesian view
+<!-- #endregion -->
+
+```python id="lTY-Reb8l_pQ" colab={"base_uri": "https://localhost:8080/", "height": 384} outputId="779ce675-da5c-48dd-c779-b526d0e47a2e"
+# Define latitude and longitude range corresponding to the ACT region to pass to hp.cartview
+lonra = np.sort(map_act.box()[:, 1])/utils.degree
+latra = np.sort(map_act.box()[:, 0])/utils.degree
+print("Longitude range =", np.round(lonra,2) )
+print("Latitude range =", np.round(latra,2) )
+
+hp.cartview(map_hp, lonra = lonra, latra = latra, min = -rang, max = rang, title = "Cartesian view ACT D56 in Healpix",
+            cmap = cm.get_cmap('RdYlBu'))
+```
+
+<!-- #region id="NAbf9ypzmB9r" -->
+Now let's convert a `HEALPix` *Planck* map to CAR. We start by reading in the Planck map using `hp.read_map` and plotting it `hp.mollview`.
+<!-- #endregion -->
+
+```python id="TXMOl6sKmDwj" colab={"base_uri": "https://localhost:8080/", "height": 555} outputId="8140da49-cf37-45ab-de6f-081ce78d507d"
+# Read in and plot Planck 143 GHz map
+# note that generally Planck maps are in K, while ACT maps in uK
+
+map_planck = hp.read_map("HFI_SkyMap_143_2048_R2.02_nominal.fits")
+
+hp.mollview(map_planck, title = "Planck 143 GHz map", unit = "K", norm="hist")
+```
+
+```python id="RbXtHJd4guaH" colab={"base_uri": "https://localhost:8080/"} outputId="02400344-e300-4265-8df9-6cbbe3b33e2f"
+# Plot using healpy
+lonra = np.sort(map_act.box()[:, 1])/utils.degree
+latra = np.sort(map_act.box()[:, 0])/utils.degree
+rang = 300
+print(lonra, latra)
+```
+
+```python id="lIQROuhshjbs" colab={"base_uri": "https://localhost:8080/", "height": 373} outputId="fc895282-6995-487d-9c16-222b0d153b2b"
+hp.cartview(map_planck, lonra = lonra, latra = latra, coord=["G","C"], flip="astro",
+            cmap = cm.get_cmap('RdYlBu_r'))
+```
+
+<!-- #region id="YMKQZZyqo6eW" -->
+Now let's reproject the map into CAR using `reproject.healpix2map`. You can specify the shape, wcs, lmax as well as whether you want to include rotation (here we rotate from Galactic coordinates to Celestial with `rot="gal,cel"`). The `method` option controls how to interpolate between the input and output pixelization; the default option is `harm`, which uses spherical harmonics to do the interpolation.
+<!-- #endregion -->
+
+```python id="Crdw_6d0AtIu"
+# Reproject Planck map to CAR, given shape and wcs (include rotation rot="gal,equ" )
+map_planck_car_harm = reproject.healpix2map(map_planck, shape = map_act.shape, wcs = map_act.wcs, lmax=ELLMAX, method="harm", rot="gal,cel")
+
+```
+
+```python id="12-KpeQNKnqP" colab={"base_uri": "https://localhost:8080/", "height": 312} outputId="b256b53d-569d-4e34-b812-fd0ff2198985"
+enplot.pshow(map_planck_car_harm, **{"downgrade": 4, "colorbar":True, "ticks": 10} )
+```
+
+<!-- #region id="ZN5KQ6c6TW8R" -->
+Seems like the interpolation didn't work very well, likely due to bright sources in the map. Let's use the `spline` method instead. `spline` is also recommended for masks. Beware that `spline` might not necessarily preserve power.
+<!-- #endregion -->
+
+```python id="NyZSqoG7mFqs"
+# Reproject Planck map to CAR, given shape and wcs (include rotation rot="gal,equ" )
+map_planck_car = reproject.healpix2map(map_planck, shape = map_act.shape, wcs = map_act.wcs, lmax=ELLMAX, method="spline", rot="gal,cel")
+
+```
+
+```python id="Kr0EkEU4U3Te" colab={"base_uri": "https://localhost:8080/", "height": 312} outputId="d56a9c39-f68b-423f-c56f-0e0cf28fbb0f"
+eshow(map_planck_car, downgrade=4, colorbar=True, ticks=10)
+```
+
+<!-- #region id="Hb1vNV9NmWLM" -->
+Compare with the reprojected *Planck* 143 GHz map with the ACT map!
+<!-- #endregion -->
+
+```python colab={"base_uri": "https://localhost:8080/", "height": 312} id="5eYhSidwmWvZ" outputId="123de782-e454-4818-c619-055c932f122c"
+enplot.pshow(map_act, downgrade=4, colorbar=True, ticks=10)
+```
+
+<!-- #region id="A1KAMt5SvnEL" -->
+In general, one has to be very careful with interpolation and reprojection for these reasons: spherical harmonics can bandlimit sharp features in the map and introduce ringing, while spline interpolation can distort map statistics. These drawbacks are unavoidable and a user will need to tailor approaches to their particular situation, or come up with workarounds (like masking bright point sources, for example).
+<!-- #endregion -->
+
+
+---
+
+# pixell_simulations.md
+
+---
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .md
+      format_name: markdown
+      format_version: '1.3'
+      jupytext_version: 1.17.2
+  kernelspec:
+    display_name: Python 3
+    name: python3
+---
+
+<!-- #region id="yPF5lzLN9DJB" -->
+# Simulations with pixell
+
+*Written by the ACT Collaboration*
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/simonsobs/pixell_tutorials/blob/master/pixell_simulations.ipynb)
+
+---
+
+
+This notebook, and the accompanying notebooks included in this set, are designed to help users who are new to working with [`pixell`](https://github.com/simonsobs/pixell/) get started with the package. As a set these notebooks will guide users through examples of how to read in and display maps, how to perform spherical harmonic transform and calculate simple spectra, how to transform the maps and how to study point sources in the maps.
+
+The `pixell` library allows users to load,
+manipulate and analyze maps stored in rectangular pixelization. It is
+mainly targeted for use with maps of the sky (e.g. CMB intensity and polarization maps, stacks of 21 cm intensity maps, binned galaxy positions or shear) in cylindrical projection.
+
+In this notebook we will use pixell functions to simulate millimeter-wave sky maps, including different components such as CMB, CMB lensing, Extragalactic Point Sources and Galaxy Clusters, and simplistic noise.
+
+- [x] `enmap.randmap` (flat-sky Gaussian simulations, CMB and noise)
+
+- [x] `curvedsky.randmap` (curved-sky Gaussian simulations, CMB and noise)
+
+- [x] `lensing.lens_map` (flat-sky lensing operation)
+
+- [x] `lensing.lens_map_curved` (curved-sky lensing operation)
+
+- [x] `pointsrcs.sim_objects` (injecting point sources)
+
+
+
+<!-- #endregion -->
+
+```python id="kDFKT4bz89Ra"
+# Install neccesary packages
+!pip install pixell camb
+```
+
+```python id="s3We41ht94xX"
+# Import packages
+import numpy as np
+import matplotlib.pyplot as plt
+from pixell import powspec
+from pixell import utils
+from pixell import enmap
+from pixell import curvedsky
+from pixell import lensing
+from pixell import pointsrcs
+from pixell import enplot
+```
+
+<!-- #region id="RFGNWqMC9yb5" -->
+**Making a map from scratch**
+
+For details on how to manipulate maps in pixell take a look at ["Pixell_map_manipulation.ipynb"](https://github.com/simonsobs/pixell_tutorials/blob/master/Pixell_map_manipulation.ipynb). First lets make a zeros map on a certain patch of the sky, let's use the region covering right ascension from 15 to 35 degrees and declination from -10 to -2 (you can try any patch). Here we need to define the vertices of a rectangle from left bottom to top right, these are RA0,DEC0 = 35,-10 and RA1,DEC1 = 15,-2 (think about the sky as going from right ascension 180 to -180 and declinations -90 to +90. We will use 0.5 arcminutes pixels in plate carrée projection, this means all pixels cover 0.5 arcminutes in latitude and longitude
+<!-- #endregion -->
+
+```python id="NX2A3eIk-y0J"
+              # DEC0, RA0  DEC1 RA1
+box = np.array([[-10, 35], [-2, 15]]) * utils.degree
+shape, wcs = enmap.geometry(pos=box, res=0.5*utils.arcmin, proj='car')
+# we will use only the temperature component or parameter stokes I
+omap = enmap.zeros(shape, wcs)
+```
+
+```python id="-d8ndl4btd96"
+# we can use enplot and see what we have
+enplot.pshow(omap, range=500, colorbar=True, downgrade=2)
+```
+
+<!-- #region id="G9UeyFDdtipD" -->
+looks like an empty map in the region that we wanted. We can also check the pixel size, since all pixels cover 0.5 in width and height we should have 8x60/0.5 = 960 pixels in height and 20x60/0.5 = 2400 in width
+
+<!-- #endregion -->
+
+```python id="DTXdCdZ2tnLZ"
+omap.shape
+```
+
+<!-- #region id="6PyaTjLxPhOZ" -->
+This means that dimension = (number of stokes parameters, declination pixels, right ascension pixels)
+<!-- #endregion -->
+
+<!-- #region id="_vJ5OYvI9yjp" -->
+**Gaussian realization of CMB**
+
+There are two ways of simulating things, using flat sky approximation or curved sky. Let's start with flat sky, there is a handy function from `enmap` called `rand_map`, which draws a random realization from a power spectrum. To call this function we need to pass the following arguments:
+
+`shape`: shape of the map that we want to simulate, in our case omap.shape
+
+`wcs`: world coordinates of the map, in our case omap.wcs
+
+`cov`: power spectrum that we want to include, more on this later
+
+`scalar = False`: If we have polarization components, treat them as polarization
+
+`seed = None`: The random seed that we want to use, if None if will generate one
+
+`pixel_units = False`: The input power spectrum uses steradians
+
+`iau = False`: The default polarization convention in the CMB community (sad)
+
+`spin = [0,2]`: Apply a EB -> QU rotation
+
+The three first argument are mandatory, but you may need to modify the others depending on your application (see the `pixell` documentation).
+<!-- #endregion -->
+
+<!-- #region id="7JsQibuUPyii" -->
+We need a power spectrum, specifically we want to simulate the CMB, for that we will use the Planck TT PS (you can try any other cosmology).
+
+First we download the file in the format L TT EE BB TE
+
+<!-- #endregion -->
+
+```python id="hZB9rpVyRDT8"
+!wget -O planck_lensedCls.dat https://raw.githubusercontent.com/simonsobs/nemo/main/nemo/data/planck_lensedCls.dat
+```
+
+<!-- #region id="UvkiTJlPRHGb" -->
+We can plot the file to be sure if it contains the typical CMB power spectrum in the following way
+
+<!-- #endregion -->
+
+```python id="LmpnSCHxRTK6"
+fileps = "planck_lensedCls.dat"
+L, TT, EE, BB, TE = np.loadtxt(fileps, usecols=(0, 1, 2, 3, 4), unpack=True)
+plt.loglog(L, TT)
+# plt.yscale("log")
+plt.xlabel(r"$\ell$")
+plt.ylabel(r"$\ell (\ell+1) C_{\ell}^{TT}/(2 \pi)$")
+```
+
+```python id="6aGoL8QvGIfU"
+TT.shape
+```
+
+<!-- #region id="UsSrZQqRtzhu" -->
+We can then pass this Planck TT power spectrum to the pixell function `powspec.read_spectrum`, so that the array is reshaped in the form that Pixell expects, and the 2$\pi/(\ell (\ell+1))$ factors are applied.
+<!-- #endregion -->
+
+```python id="UEIWlvj4Tvxh"
+ps = powspec.read_spectrum(fileps, scale=True, expand=None)
+```
+
+```python id="hswCbdCvFeJP"
+ell = np.arange(len(ps[0]))
+plt.semilogx(L, TE)
+plt.semilogx(ell, ps[3] * (ell*(ell+1)) / (2*np.pi))
+```
+
+<!-- #region id="XtGDnuEpvsZg" -->
+The pixell function `enmap.rand_map` will then take in the shape and wcs that we defined above, as well as the power spectrum from the cell above to make the corresponding map.
+<!-- #endregion -->
+
+```python id="-dIh1pIIRvoZ"
+# T only
+cmbmap = enmap.rand_map(omap.shape, omap.wcs, cov=ps[0])
+enplot.pshow(cmbmap, range=500, colorbar=True, downgrade=2)
+```
+
+<!-- #region id="A7xJ4kx9UN2g" -->
+If you run the previous code multiple times, you will see a different version each time, that's because each random realization is different but it is sampled from the same probability distribution (given by the power spectrum).
+
+We can also make this polarized. We also need a 3-dimensional map to hold the simulation. We also need to change the `cov` parameter so that it includes all polarization components. We have a TT, EE, BB, and TE spectrum. We need to put this into a `(3, 3, nl)` array, rather than just an `(nl,)` array:
+<!-- #endregion -->
+
+```python id="4nWl2s4hj7L0"
+nl = ps.shape[-1]
+l = np.arange(nl)
+
+ps_square = np.zeros((3, 3, nl))
+print(ps_square.shape)
+
+ps_square[0, 0] = ps[0]
+ps_square[0, 1] = ps[3]
+ps_square[1, 0] = ps[3]
+ps_square[1, 1] = ps[1]
+ps_square[2, 2] = ps[2]
+
+plt.semilogy(l, l*(l+1)/2/np.pi*ps_square[0, 0], label='00')
+plt.semilogy(l, l*(l+1)/2/np.pi*ps_square[1, 1], label='11')
+plt.semilogy(l, l*(l+1)/2/np.pi*ps_square[2, 2], label='22')
+plt.ylim(1e-3, 1e4)
+plt.legend()
+plt.show()
+
+plt.plot(l, l*(l+1)/2/np.pi*ps_square[0, 1], label='01')
+plt.legend()
+```
+
+<!-- #region id="nM_pj4yLmgFH" -->
+Then we provide this square array as the `cov` parameter instead:
+<!-- #endregion -->
+
+```python id="XinX36L4miXy"
+# T, Q, U
+cmbmap_pol = enmap.rand_map((3, *shape), wcs, cov=ps_square)
+for i in range(3):
+  enplot.pshow(cmbmap_pol[i], range=[500, 25, 25][i], colorbar=True, downgrade=2)
+```
+
+<!-- #region id="46fOKO6QUQh2" -->
+Now this is using flat sky approximation, so it uses the Fourier transform of the patch. If we want to account for the curvature of the sky, which is important for big patches we need to use the `curvedsky` module, in that module we can also find a `rand_map` function.
+<!-- #endregion -->
+
+```python id="klCE_gs5USqX"
+# full sky goes from ra,dec +180, -90 to ra, dec -180, +90
+# we can use bigger pixels such as 4 arcmin to avoid using too much memory
+                #DEC0, RA0  DEC1 RA1
+shape, wcs = enmap.fullsky_geometry(res=4*utils.arcmin, proj='car', variant='CC')
+# we will use only the temperature component or parameter stokes I
+omap = enmap.zeros((1, *shape), wcs)
+# checking the map with a plot
+enplot.pshow(omap, range=500, downgrade=4, ticks=15, colorbar=True)
+```
+
+<!-- #region id="F3tSf_0rv5l_" -->
+This `curvedsky.rand_map` takes slightly different parameters than `enmap.rand_map`, in order they are
+
+`shape`: shape of the map that we want to simulate, in our case omap.shape
+
+`wcs`: world coordinates of the map, in our case omap.wcs
+
+`ps`: power spectrum that we want to include. Can take an `(nl,)` shaped ps or a `(ncomp, ncomp, nl)` ps.
+
+`lmax=None`: maximum multipole range to sample
+
+`dtype=np.float32`: type of the resulting array
+
+`seed=None`: number of the seed, if None it will generate one
+
+`spin=[0,2]`: type of spin, in we have a IQU map it is [0,2], if we give as an input a single power spectrum it will take that into consideration to generate only one map
+
+`method="auto"`: the default "auto" is fine
+
+`verbose=False`: gives text information about the process
+
+Note: it is typically sufficient to use single-precision maps (`dtype=np.float32`) which would speed up computation and use less memory. The default for this function is double precision (`dtype=np.float64`).
+<!-- #endregion -->
+
+```python id="0Bc0gGwaUjVv"
+# now simulating the CMB taking into account the curvature of the sky
+# this may take some time since it uses spherical harmonics
+
+# T only
+cmbmap = curvedsky.rand_map(omap.shape, omap.wcs, ps=ps[0], lmax=3000, dtype=np.float32, verbose=True)
+enplot.pshow(cmbmap, range=500, downgrade=4, ticks=15, colorbar=True)
+```
+
+<!-- #region id="jQpjNRplUZT6" -->
+Ok, it looks interesting. Notice the distortion at the poles; is this what you expected? To put it in context, consider this image of the earth in the same CAR projection:
+<!-- #endregion -->
+
+<!-- #region id="HXP3TMUKcyjz" -->
+![](https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Equirectangular_projection_SW.jpg/1920px-Equirectangular_projection_SW.jpg)
+<!-- #endregion -->
+
+<!-- #region id="0NQ3gf4GyFR0" -->
+This makes sense now. Each pixel in the top row of pixels (and bottom row) are in fact the same physical point -- the pole! Using `enmap.rand_map` in this case might make a more uniform looking picture but it would be physically wrong -- we can't use the flat sky approximation when our range of declinations is large!
+<!-- #endregion -->
+
+```python id="tshbkq-GUVNY"
+# now simulating the CMB in this patch in the flat sky approximation
+# NOTE: THIS IS WRONG
+cmbmap = enmap.rand_map(omap.shape, omap.wcs, cov=ps[0])
+enplot.pshow(cmbmap, range=500, colorbar=True, downgrade=4, ticks=15)
+```
+
+<!-- #region id="7f70XuQq1jmN" -->
+There are no distortions at the poles -- this is *wrong*. We need the distortions!
+
+Just like the flatsky case, we can draw a polarized simulation. We again need a map to hold the 3 polarization components, and need to give it a power spectrum that puts the components in a square:
+<!-- #endregion -->
+
+```python id="c3TSGZwepku0"
+# T, Q, U
+cmbmap_pol = curvedsky.rand_map((3, *shape), wcs, ps=ps_square, lmax=3000, dtype=np.float32, verbose=True)
+for i in range(3):
+  enplot.pshow(cmbmap_pol[i], range=[500, 25, 25][i], downgrade=4, ticks=15, colorbar=True)
+```
+
+<!-- #region id="FIgq7BMw9ysb" -->
+**Lensing**
+<!-- #endregion -->
+
+<!-- #region id="y2TT6w_8xldi" -->
+To make flat-sky lensing simulations, we need unlensed CMB power spectra, as well as a lensing potential power spectrum. We obtain these from CAMB by running the following cells:
+<!-- #endregion -->
+
+```python id="12A-gpoJ4QyW"
+import camb
+
+pars = camb.set_params(H0=67.5, ombh2=0.022, omch2=0.122, mnu=0.06, omk=0, tau=0.06,
+                       As=2e-9, ns=0.965, halofit_version='mead', lmax=4000)
+pars.set_for_lmax(4000, lens_potential_accuracy=4)
+
+# calculate results for these parameters
+results = camb.get_results(pars)
+powers = results.get_cmb_power_spectra(pars, CMB_unit='muK', raw_cl=True)
+TT, EE, BB, TE = powers["unlensed_scalar"].T
+ell = np.arange(len(TT))
+
+# for simplicity assume lensing is uncorrelated with the CMB power spectra, but
+# we could include correlations too as CAMB calculates them
+PP = powers["lens_potential"][:, 0]
+```
+
+<!-- #region id="ey-PxhdX1sGT" -->
+Before we create the lensed simulations, we need to package the CMB and lensing potential power spectra in a format that pixell will understand:
+<!-- #endregion -->
+
+```python id="x1VNVLpyObKx"
+ps_init = np.vstack((ell, TT, EE, TE, PP))
+ps_init = np.atleast_2d(ps_init)
+ps_init = powspec.expand_inds(np.array(ps_init[0],dtype=int), ps_init[1:])
+ps_cmb = ps_init[:3]
+ps_cmb = powspec.sym_expand(ps_cmb, scheme="diag", ncomp=3)
+ps_lens = ps_init[3]
+```
+
+<!-- #region id="2ueUvhz_19A2" -->
+We are then ready to use the pixell function `enmap.rand_map` to make a $\phi$ map from the lensing potential power spectrum, as well as unlensed CMB maps from the CMB power spectra.
+
+Let's be careful to go back to the small patch of sky for which we used `enmap.rand_map` in the beginning of this notebook, where the flat-sky limit is approximately valid:
+<!-- #endregion -->
+
+```python id="UFF6_hOB17n4"
+              # DEC0, RA0  DEC1 RA1
+box = np.array([[-10, 35], [-2, 15]]) * utils.degree
+shape, wcs = enmap.geometry(pos=box, res=0.5*utils.arcmin, proj='car')
+
+phi_map = enmap.rand_map(shape, wcs, cov=ps_lens)
+cmbmap = enmap.rand_map((3, *shape), wcs, cov=ps_cmb)
+```
+
+<!-- #region id="PTeynEA72dDM" -->
+The pixell function `lensing.lens_map` will take in the CMB map we created above, as well as the gradient of the $\phi$ map and make a lensed version of the CMB maps. It has the following arguments:
+
+`imap`: the unlensed map with shape `(..., ny, nx)` to be lensed
+
+`grad_phi`: the map of the gradient of the lensing potential with shape `(2, ny, nx)`, obtained from `enmap.grad_phi`
+
+`order=3`: related to the pixel-space interpolation (fine to keep)
+
+`mode="spline"`: same as above
+
+`border="cyclic"`: same as above
+
+`trans=False`: if True, perform adjoint of lensing (not delensing)
+
+`deriv=False`: whether to return derivatives of the interpolation
+
+`h=1e-7`: finite difference size for the derivative
+
+For standard lensing, we can accept all the defaults and just pass our unlensed map and lensing realization:
+<!-- #endregion -->
+
+```python id="2-XwNNvI2at7"
+grad_phi = enmap.grad(phi_map)
+lensedcmb = lensing.lens_map(cmbmap, grad_phi, order=3, mode="spline", border="cyclic", trans=False, deriv=False, h=1e-7)
+```
+
+<!-- #region id="blYntsOt2v46" -->
+Let's take a look at the lensed CMB maps we just created, followed by the corresponding unlensed CMB map:
+<!-- #endregion -->
+
+```python id="3wEccFDQxOit"
+enplot.pshow(lensedcmb[0], colorbar=True, downgrade=2, range=300)
+enplot.pshow(cmbmap[0], colorbar=True, downgrade=2)
+```
+
+<!-- #region id="zyTrdUeOe_rv" -->
+The effect of lensing is made more obvious by looking at the difference between the output and input (unlensed) CMB maps:
+<!-- #endregion -->
+
+```python id="tEojjqfve-JE"
+enplot.pshow(lensedcmb[0] - cmbmap[0], colorbar=True, downgrade=2, range=50)
+```
+
+<!-- #region id="jJ1yHWKa21Iy" -->
+We can then compare the power spectra of these lensed maps to the lensed power spectra from CAMB. To calculate the power spectra of the lensed maps we created, we will first apodize the maps, and use the pixell functions `enmap.map2harm` and enmap.lbin to calculate the power spectra. If you need a refresher of this procedure, please refer to the notebook ["Fourier Operations with pixell"](https://github.com/simonsobs/pixell_tutorials/blob/master/Pixell_fourier_space_operations.ipynb).
+<!-- #endregion -->
+
+<!-- #region id="VBX8FYSb4H7E" -->
+Apodization is done as follows:
+<!-- #endregion -->
+
+```python id="kLXytVYRo46N"
+apod_pix = 200 # number of pixels at the edge to apodize
+taper = enmap.apod(cmbmap*0.0 + 1.0, apod_pix)
+```
+
+```python id="J5X1wU3mo9OZ"
+for i in range(3):
+  enplot.pshow((taper * lensedcmb)[i], downgrade=2, colorbar=True)
+```
+
+<!-- #region id="xRHS9Zq64Lb2" -->
+We can then compute the 2D FFT with `enmap.map2harm` and use `enmap.lbin` to bin the power spectra into 1D.
+<!-- #endregion -->
+
+```python id="Ek0NoO8tNhj_"
+harm_lensed = enmap.map2harm(taper * lensedcmb, normalize="phys")
+w2 = np.mean(taper**2)
+power = (harm_lensed[:, None] * np.conj(harm_lensed)).real/w2
+cl, ls1 = power.lbin(bsize=40)
+```
+
+<!-- #region id="P4oKvpPf4z0R" -->
+Here, we also load the CAMB lensed power spectra to compare to the lensed power spectra from the simulation we created in this notebook.
+<!-- #endregion -->
+
+```python id="u9SE_LlSk_qR"
+powers_lensed_camb =  powers["lensed_scalar"].T
+```
+
+```python id="hxHxVjwfdcJm"
+dll_fac = (ls1*(ls1+1))/(2*np.pi)
+camb_dll_fac = (ell*(ell+1))/(2*np.pi)
+
+fig, ax = plt.subplots(2, 2)
+
+ax[0,0].plot(ls1,cl[0, 0]*dll_fac,label="This notebook")
+ax[0,0].plot(powers_lensed_camb[0]*camb_dll_fac,label="CAMB lensed")
+ax[0,0].set_xlim(20, 4000)
+
+ax[0,1].plot(ls1,cl[1, 1]*dll_fac,label="This notebook")
+ax[0,1].plot(powers_lensed_camb[1]*camb_dll_fac,label="CAMB lensed")
+ax[0,1].set_xlim(20, 4000)
+
+ax[1,0].plot(ls1,cl[2, 2]*dll_fac,label="This notebook")
+ax[1,0].plot(powers_lensed_camb[2]*camb_dll_fac,label="CAMB lensed")
+ax[1,0].set_xlim(20, 4000)
+
+ax[1,1].plot(ls1,cl[0, 1]*dll_fac,label="This notebook")
+ax[1,1].plot(powers_lensed_camb[3]*camb_dll_fac,label="CAMB lensed")
+ax[1,1].set_xlim(20, 4000)
+
+ax[0,0].set_xlabel("$\ell$")
+ax[0,0].set_ylabel("TT")
+ax[0,1].set_xlabel("$\ell$")
+ax[0,1].set_ylabel("EE")
+ax[1,0].set_xlabel("$\ell$")
+ax[1,0].set_ylabel("BB")
+ax[1,1].set_xlabel("$\ell$")
+ax[1,1].set_ylabel("TE")
+
+plt.tight_layout()
+plt.legend()
+plt.show()
+```
+
+<!-- #region id="HUYzOURssu-1" -->
+Nice! There are clearly some lensing-induced B-modes, but they don't have quite the right shape. This is likely due to the fact that we've done everything on the flat sky and/or haven't properly accounted for the mode-coupling due to the sky mask.
+
+Fortunately, just as for the Gaussian realization from the CMB, `pixell` also supports full-sky lensing operations that accounts for spherical geometry. Because we can work on the full-sky, we won't need to apodize the map; however, this will not apply to a realistic simulation for ACT or SO data, which only observes a fraction of the sky.
+
+As for the Gaussian realization, the curved-sky lensing operation `lensing.lens_map_curved` has new arguments:
+
+`shape`: with `wcs`, the geometry of the output map
+
+`wcs`: with shape, the geometry of the output map
+
+`phi_alm`: the spherical harmonic realization of the lensing potential realization
+
+`cmb_alm`: the spherical harmonics of the unlensed CMB realization
+
+`phi_ainfo=None`: describes the spherical harmonic ordering convention for `phi` (you will know if you need to adjust this)
+
+`maplmax=None`: deprecated
+
+`dtype=np.float64`: output precision, needs to be double for accurate calculations (may crash otherwise)
+
+`spin=[0,2]`: like in `curvedsky.rand_map`
+
+`output="l"`: returns only the lensed CMB map. `lu` returns the lensed and unlensed CMB. More options for lensing maps in the [function documentation](https://github.com/simonsobs/pixell/blob/a61ca1a3ae99e4c8627c86a0fe2401d4bfe67d66/pixell/lensing.py#L134)
+
+`geodesic=True`: slower but accurate, `False` for faster but less accurate
+
+`verbose=False`: print helpful messages
+
+`delta_theta=None`: can leave this as-is
+
+In the below, besides supplying the required arguments, the only other important argument we change is to also return the unlensed CMB so we can compare:
+<!-- #endregion -->
+
+```python id="PpV-vQ77wt6T"
+# first get a full-sky realization of the phi map and the polarized, unlensed cmb
+# use low-resolution to reduce memory and runtime
+shape, wcs = enmap.fullsky_geometry(res=4*utils.arcmin, proj='car')
+
+# pixell needs the maps in spherical harmonics
+phi_alm = curvedsky.rand_alm(ps=ps_lens, lmax=2700)
+cmb_alm = curvedsky.rand_alm(ps=ps_cmb, lmax=2700)
+
+# get the lensed cmb map
+lensedcmb, cmbmap = lensing.lens_map_curved((3, *shape), wcs, phi_alm, cmb_alm, output="lu", verbose=True)
+```
+
+<!-- #region id="MbTUbm2M023R" -->
+As before, let's take a look at the lensed CMB map, the unlensed CMB map, and their difference:
+<!-- #endregion -->
+
+```python id="G-gBkklV09An"
+enplot.pshow(lensedcmb[0], colorbar=True, downgrade=4, ticks=15)
+enplot.pshow(cmbmap[0], colorbar=True, downgrade=4, ticks=15)
+enplot.pshow(lensedcmb[0] - cmbmap[0], colorbar=True, downgrade=4, ticks=15)
+```
+
+<!-- #region id="Qt44MhuCL2WK" -->
+Now we can take the full-sky power spectrum without a mask to see if the lensing produced the correct lensed CMB power spectrum. A nice benefit of this test compared to the flat-sky test is that we have more sky area and so the measured power spectrum is also less noisy:
+<!-- #endregion -->
+
+```python id="36bGziOGL1rR"
+lensed_alm = curvedsky.map2alm(lensedcmb, lmax=2700)
+cl = curvedsky.alm2cl(lensed_alm[:, None], lensed_alm)
+```
+
+```python id="K_M_UVJ2MY2P"
+ell = np.arange(cl.shape[-1])
+dll_fac = (ell*(ell+1))/(2*np.pi)
+
+camb_ell = np.arange(powers_lensed_camb[0].shape[-1])
+camb_dll_fac = (camb_ell*(camb_ell+1))/(2*np.pi)
+
+fig, ax = plt.subplots(2, 2, figsize=(10, 6))
+
+ax[0,0].plot(cl[0, 0]*dll_fac,label="This notebook")
+ax[0,0].plot(powers_lensed_camb[0]*camb_dll_fac,label="CAMB lensed")
+ax[0,0].set_xlim(20, 2700)
+
+ax[0,1].plot(cl[1, 1]*dll_fac,label="This notebook")
+ax[0,1].plot(powers_lensed_camb[1]*camb_dll_fac,label="CAMB lensed")
+ax[0,1].set_xlim(20, 2700)
+
+ax[1,0].plot(cl[2, 2]*dll_fac,label="This notebook")
+ax[1,0].plot(powers_lensed_camb[2]*camb_dll_fac,label="CAMB lensed")
+ax[1,0].set_xlim(20, 2700)
+
+ax[1,1].plot(cl[0, 1]*dll_fac,label="This notebook")
+ax[1,1].plot(powers_lensed_camb[3]*camb_dll_fac,label="CAMB lensed")
+ax[1,1].set_xlim(20, 2700)
+
+ax[0,0].set_xlabel("$\ell$")
+ax[0,0].set_ylabel("TT")
+ax[0,1].set_xlabel("$\ell$")
+ax[0,1].set_ylabel("EE")
+ax[1,0].set_xlabel("$\ell$")
+ax[1,0].set_ylabel("BB")
+ax[1,1].set_xlabel("$\ell$")
+ax[1,1].set_ylabel("TE")
+
+plt.tight_layout()
+plt.legend()
+plt.show()
+```
+
+<!-- #region id="7hBJxBOkNny0" -->
+Hooray, that worked well -- look at how much better the BB spectrum matches! Evidently the flat-sky lensing example was indeed biased either by its flat-sky treatment and/or simplistic handling of the mask when measuring the power spectrum. However, we should keep in mind that the lensing is not accurate out to the bandlimit -- we need to build-in some buffer to our analysis by lensing to a high bandlimit but only using larger scales (in this case, e.g., <2000).
+<!-- #endregion -->
+
+<!-- #region id="AzJ6umw3QylK" -->
+**Point Sources**
+<!-- #endregion -->
+
+<!-- #region id="vMfdDrc6Uz-3" -->
+In CMB maps we typically have extragalactic point sources emission and galaxy clusters through the Sunyaev Zel'dovich effect. The former are bright spots in the map and the latter it is a decrement for frequencies below 220 GHz and increment above 220 GHz, the effect it null approximately at 220 GHz.
+
+To simulate point sources we need a profile, since these galaxies are usually unresolved points in the sky their profile is the telescope beam. For a 6-meter telescope the full width at half maximum of the beam is roughly 1.4 arcminutes at 150 GHz, we can simplify the profile as Gaussian.
+
+Considering that a unit normalized Gaussian centered at zero has the form $\exp{\left( -\frac{r^2}{2\sigma^2} \right)}$ and the full width at half maximum is $\mathrm{FWHM} = 2 \sqrt{2 \ln(2)} \sigma$, we have the following functional form for the beam: $\exp{\left(-\frac{4\ln(2)r^2}{\mathrm{FWHM}^2}\right)}$
+<!-- #endregion -->
+
+```python id="NvSpC9LmVHGm"
+# Generating a Gaussian beam
+FWHM = 1.4
+r = np.linspace(0, 60, 1000) # 60 arcminutes or 1 degree
+B = np.exp(-(4*np.log(2)*r**2) / (FWHM**2))
+plt.plot(r, B)
+plt.xlim(0, 5)
+plt.ylabel("Beam amplitude")
+plt.xlabel("Radius (arcmin)")
+# we need to pass the radius to radians
+r *= 1/60 * np.pi / 180
+```
+
+<!-- #region id="_nvc372KVKd-" -->
+Now we can generate sources, for that we will use the `pointsrcs` module, in specific the function `sim_objects`, this function requires the following:
+
+`shape`: Shape of the map in which we will inject sources, in our case omap.shape
+
+`wcs`: World coordinates of the map in which we will inject sources in our case omap.wcs
+
+`poss`: Position of the sources that we want to inject in the form [dec,ra] where dec and ra are arrays of floats with the declination and right ascension of the sources in radians
+
+`amp`: Amplitude of the sources that we want to inject, this is the peak value of the beam in temperature units as an array of floats
+
+`profile`: The radial profile of the sources, in case of point sources this profile is the beam, but for example for cluster it could be a more extended profile, the profile is given as [r,B] where r is the radius in radians and B is the profile amplitude
+
+`vmin=None`: The lowest value to simulate in map units, by default it takes 1e-3*amp.
+
+`pixwin=False`: If we want to apply the pixel window function after simulating the objects.
+
+A nice feature of this function is that it automatically handles the "distorted" geometry near the poles, so that radially-symmetric objects will appear horizontally stretched (as they should). This won't be evident in the small cutout below but it is important for a full-sky simulation:
+
+<!-- #endregion -->
+
+```python id="F9-AaBFoVMsW"
+             # DEC0, RA0  DEC1 RA1
+box = np.array([[-10, 35],[-2, 15]]) * utils.degree
+shape, wcs = enmap.geometry(pos=box, res=0.5 * utils.arcmin, proj='car')
+# we will use only the temperature component or parameter stokes I
+
+# we will generate 100 sources
+nsrc = 100
+# we choose a logspace between 100 and 10000
+amp = np.logspace(2.0, 4.0, nsrc)
+# the position are random values inside omap
+dec = np.random.uniform(-10, -2, nsrc) * np.pi / 180
+ra = np.random.uniform(15, 35, nsrc)  *np.pi / 180
+
+# we generate the sourcemap here
+srcmap = pointsrcs.sim_objects(shape, wcs, [dec, ra], amp, [r, B],
+                               min=np.min(amp)*1e-4)
+
+# plotting the result
+enplot.pshow(srcmap, range=500)
+
+# adding to a cmb map
+cmbmap = curvedsky.rand_map(shape, wcs, ps=ps[0])
+enplot.pshow(srcmap + cmbmap, range=500)
+```
+
+<!-- #region id="8mmWPSZwTsbn" -->
+**Simplistic Noise**
+
+Finally we consider simple, additive noise that you can add to any of the previous realizations of the underlying "signal." Unlike the signal, which dies off quickly as a function of $\ell$, the noise is not bandlimited. Realistic noise in the maps is quite complicated (see https://arxiv.org/abs/2303.04180), so here we just show a simplified example. In fact, we've already used all of the tools.
+
+We want to go back the case of using `enmap.rand_map` -- the flat-sky code -- to generate Gaussian realizations on the full-sky. This was unphysical for the signal, but for the noise, it is faster, sufficient, and in some ways better (again, the realization is not bandlimited).
+
+We define a realistic noise power spectrum and level, and can also exploit that noise is ~symmetric in E and B to just perform a "scalar" rather than spin-2 transform:
+<!-- #endregion -->
+
+```python id="WlPiL9zOiBtS"
+# make a polarized noise ps function
+def T_and_P_noise_ps(ell, white_level=30, noise_ps_scaling=-4, T_knee=3000,
+                     T_cap=300, P_knee=300, P_cap=100):
+  """Get the temperature and polarization noise power spectra evaluated at ell.
+  Follows this model:
+
+  PS(ell) = white_level**2 * ((ell/knee)**scaling + 1), ell > cap
+  PS(ell) = white_level**2 * ((cap/knee)**scaling + 1), ell <= cap
+
+  Parameters
+  ----------
+  ell : (...) np.ndarray
+    Angular scales.
+  white_level : scalar
+    Temperature white noise level in uK-arcmin. Polarization is this times
+    sqrt(2).
+  noise_ps_scaling : scalar
+    Power-law scaling of the low-ell noise power spectra.
+  T_knee : scalar
+    Ell-knee of temperature power spectrum.
+  T_cap : scalar
+    Minimum ell at which the spectrum is capped.
+  P_knee : scalar
+    Ell-knee of polarization power spectrum.
+  P_cap : scalar
+    Minimum ell at which the spectrum is capped.
+
+  Returns
+  -------
+  (3, ...) np.ndarray
+    The polarization noise power spectra in T, Q, U. Assumed diagonal over
+    polarization.
+  """
+  T = np.zeros_like(ell)
+  mask = ell <= T_cap
+  T[mask] = white_level**2 * ((T_cap/T_knee)**noise_ps_scaling + 1)
+  T[~mask] = white_level**2 * ((ell[~mask]/T_knee)**noise_ps_scaling + 1)
+
+  P = np.zeros_like(ell)
+  mask = ell <= P_cap
+  P[mask] = 2 * white_level**2 * ((P_cap/P_knee)**noise_ps_scaling + 1)
+  P[~mask] = 2 * white_level**2 * ((ell[~mask]/P_knee)**noise_ps_scaling + 1)
+
+
+  # convert to steradians (note, not square radians!). the below lines first
+  # convert to square radians, then from square radians to steradians
+  T *= utils.arcmin**2 * (4*np.pi / (np.pi * 2*np.pi))
+  P *= utils.arcmin**2 * (4*np.pi / (np.pi * 2*np.pi))
+
+  # put into square shape and return
+  out = np.zeros((3, 3, *ell.shape), ell.dtype)
+  out[0, 0] = T
+  out[1, 1] = P
+  out[2, 2] = P
+
+  return out
+```
+
+<!-- #region id="4649BFRFGl57" -->
+Let's see what the default looks like as a function of $\ell$. This includes large-scale correlated noise from the atmosphere as would be observed by the SO LAT, but the SO SAT includes a half-wave plate and processing filters to mitigate this, so the noise spectra would need adjustment:
+<!-- #endregion -->
+
+```python id="idE-iUuHGWLA"
+ell = np.arange(10000, dtype=np.float64)
+noise_ps = T_and_P_noise_ps(ell)
+plt.loglog(ell, noise_ps[0, 0])
+plt.loglog(ell, noise_ps[1, 1])
+```
+
+<!-- #region id="p3frLSYIAny_" -->
+Let's make a convenience function to draw noise realizations, since this will also need to take into account the area of each pixel to keep the white-noise level consistent:
+<!-- #endregion -->
+
+```python id="xHb547KoHEd2"
+def get_noise_sim(shape, wcs, seed=None, **T_and_P_noise_ps_kwargs):
+  """Draw a noise realization from the constructed noise powre spectrum
+  that also accounts for the smaller, and thus noisier, pixels near the
+  poles.
+
+  Parameters
+  ----------
+  shape : (ny, nx) tuple
+    The footprint of the map.
+  wcs : astropy.wcs.wcs.WCS
+    The geometry of the map. Assumes units of degrees (the pixell
+    default for wcs).
+  seed : int or list of int
+    Random seed.
+  T_and_P_noise_ps_kwargs : dict
+    Keyword arguments to be passed to T_and_P_noise_ps.
+
+  Returns
+  -------
+  (3, ny, nx) enmap.ndmap
+    Noise realization (polarized) drawn from T_and_P_noise_ps, with the
+    correct white-noise level, correlated noise shape, and corrected for
+    pixel areas.
+  """
+  # get the noise ps. for enmap.rand_map to work, this needs to be
+  # evaluated at integer ells and cover all the angular scales in
+  # out 2d fourier space
+  ell = np.arange(0, np.ceil(enmap.modlmap(shape, wcs).max()) + 1)
+  noise_ps = T_and_P_noise_ps(ell, **T_and_P_noise_ps_kwargs)
+
+  # draw a noise realization
+  noise_sim = enmap.rand_map((3, *shape), wcs, cov=noise_ps, seed=seed,
+                             scalar=True)
+
+  # normalize by pixel area. we want this in terms of fraction of a
+  # "flat-sky" pixel
+  pixsize_steradians = enmap.pixsizemap(shape, wcs, broadcastable=True)
+  pix_area_deg = np.abs(np.prod(wcs.wcs.cdelt))
+  pix_area_steradians = pix_area_deg * utils.degree**2
+  frac_pixsize = pixsize_steradians / pix_area_steradians
+
+  return noise_sim / np.sqrt(frac_pixsize)
+```
+
+<!-- #region id="zbaSqjRtKnTc" -->
+Let's try it out on the full-sky:
+<!-- #endregion -->
+
+```python id="Sj0bsLPVKqBy"
+shape, wcs = enmap.fullsky_geometry(res=4*utils.arcmin, proj='car')
+
+noise_sim = get_noise_sim(shape, wcs)
+
+for i in range(3):
+  enplot.pshow(noise_sim[i], downgrade=4, ticks=15, colorbar=True)
+```
+
+<!-- #region id="oOnru2LQLR-3" -->
+### Put it all together
+
+Let's take all the above pieces and make a not-so-unrealistic simulation of data as would be observed by an actual CMB experiment:
+
+
+
+1.   We'll draw a full-sky unlensed T, Q, U CMB realization and a full-sky realization of the lensing potential and use it to "lens" the CMB
+2.   We'll add a new step to the above: convolve the resulting signal with
+the instrumental beam so that it is consistent with the point sources
+3.   We'll inject a sample of point sources with the same beam size. Assume they are not polarized
+4.   We'll add a T, Q, U noise realization to the signal
+
+This simulation omits quite a lot of real-world complexity in each of its parts --- we won't include any scan-synchronous signal, beam leakage or pixel window function, polarized or extended or "SZ-like" sources, or realistic noise --- but it is actually fairly representative.
+
+We'll wrap it in a big convenience function. Play around with all the inputs or add even more arguments to make it more tunable!
+
+(Exercise: An obvious way to streamline the below function would be to allow the user to pass pre-built signal or noise maps. That way someone could more efficiently add multiple noise realizations to the same signal realization, without rebuilding the same signal map each time)
+
+<!-- #endregion -->
+
+```python id="d7YD88NvLU_B"
+import healpy as hp
+
+def get_signal_and_noise_sim(shape, wcs, lmax, ps_cmb, ps_lens, cmb_seed=None,
+                             phi_seed=None, src_pos_seed=None, noise_seed=None,
+                             beam_fwhm=1.4, nsrc=10000, white_level=30,
+                             noise_ps_scaling=-4, T_knee=3000, T_cap=300,
+                             P_knee=300, P_cap=100):
+  """Draw a semi-realistic end-to-end sim including lensed CMB, temperature
+  point sources, instrumental beam, and instrumental and atmospheric noise.
+
+  Parameters
+  ----------
+  shape : (ny, nx) tuple
+    The footprint of the map.
+  wcs : astropy.wcs.wcs.WCS
+    The geometry of the map. Assumes units of degrees (the pixell
+    default for wcs).
+  lmax : int
+    maximum multipole for the signal
+  ps_cmb : (3, 3, nl) np.ndarray
+    CMB TEB power spectra with covariances
+  ps_lens : (nl,) np.ndarray
+    Lensing potential power spectrum
+  cmb_seed : int or list of int
+    Seed for unlensed CMB
+  phi_seed : int or list of int
+    Seed for lensing potential
+  src_pos_seed : int or list of int
+    Seed for point source locations
+  noise_seed : int or list of int
+    Seed for noise
+  beam_fwhm : scalar
+    Beam width in arcmin
+  nsrc : int
+    Number of point sources logarithmically distributed between
+    100 and 10000 uK
+  white_level : scalar
+    Temperature white noise level in uK-arcmin. Polarization is this times
+    sqrt(2).
+  noise_ps_scaling : scalar
+    Power-law scaling of the low-ell noise power spectra.
+  T_knee : scalar
+    Ell-knee of temperature power spectrum.
+  T_cap : scalar
+    Minimum ell at which the spectrum is capped.
+  P_knee : scalar
+    Ell-knee of polarization power spectrum.
+  P_cap : scalar
+    Minimum ell at which the spectrum is capped.
+
+  Returns
+  -------
+  (3, ny, nx) enmap.ndmap
+    The simulation
+  """
+
+  # get lensed CMB. assume lensing indep. of CMB (not true)
+  phi_alm = curvedsky.rand_alm(ps=ps_lens, lmax=lmax, seed=phi_seed)
+  cmb_alm = curvedsky.rand_alm(ps=ps_cmb, lmax=lmax, seed=cmb_seed)
+  lensedcmb = lensing.lens_map_curved((3, *shape), wcs, phi_alm, cmb_alm,
+                                      output="l", verbose=True)[0]
+
+  # convolve it with the beam. fwhm in radians
+  bl = hp.gauss_beam(beam_fwhm * utils.arcmin, lmax=lmax)
+  lensedcmb_alm = curvedsky.map2alm(lensedcmb, lmax=lmax)
+  curvedsky.almxfl(lensedcmb_alm, bl, out=lensedcmb_alm)
+  curvedsky.alm2map(lensedcmb_alm, lensedcmb)
+
+  # add srcs (already convolved with beam)
+  r = np.linspace(0, 60, 1000) * utils.arcmin # 60 arcminutes or 1 degree
+  B = np.exp(-4*np.log(2)*r**2 / (beam_fwhm*utils.arcmin)**2)
+  amp = np.logspace(2.0, 4.0, nsrc)
+
+  src_rng = np.random.default_rng(src_pos_seed)
+  dec = src_rng.uniform(-90, 90, nsrc) * utils.degree
+  ra = src_rng.uniform(-180, 180, nsrc)  * utils.degree
+  srcmap = pointsrcs.sim_objects(shape, wcs, [dec, ra], amp, [r, B],
+                                 vmin=np.min(amp)*1e-4)
+
+  # and noise
+  noisemap = get_noise_sim(shape, wcs, seed=noise_seed, white_level=white_level,
+                           noise_ps_scaling=noise_ps_scaling, T_knee=T_knee,
+                           T_cap=T_cap, P_knee=P_knee, P_cap=P_cap)
+
+  out = lensedcmb + noisemap
+  out[0] += srcmap
+  return out
+```
+
+```python id="tA4kJ4eLTIFa"
+totalsim = get_signal_and_noise_sim(shape, wcs, 2700, ps_cmb, ps_lens)
+
+for i in range(3):
+  enplot.pshow(totalsim[i], downgrade=4, ticks=15, colorbar=True)
+```
+
+
+---
+
+# pixell_spherical_harmonics.md
+
+---
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .md
+      format_name: markdown
+      format_version: '1.3'
+      jupytext_version: 1.17.2
+  kernelspec:
+    display_name: Python 3
+    name: python3
+---
+
+<!-- #region id="yPF5lzLN9DJB" -->
+# Spherical Harmonics with pixell
+
+
+*Written by the ACT Collaboration*
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/simonsobs/pixell_tutorials/blob/master/pixell_spherical_harmonics.ipynb)
+
+---
+
+This notebook, and the accompanying notebooks included in this set, are designed to help users who are new to working with [`pixell`](https://github.com/simonsobs/pixell/) get started with the package. As a set these notebooks will guide users through examples of how to read in and display maps, how to perform spherical harmonic transform and calculate simple spectra, how to transform the maps and how to study point sources in the maps.
+
+The `pixell` library allows users to load,
+manipulate and analyze maps stored in rectangular pixelization. It is
+mainly targeted for use with maps of the sky (e.g. CMB intensity and polarization maps, stacks of 21 cm intensity maps, binned galaxy positions or shear) in cylindrical projection.
+
+In this notebook we'll look at how to get the *alms* of a map with `pixell`. We'll also demonstrate how to filter the *alms* and how to project the *alms* back to map space. Lastly we'll demonstrate how the *alms* can be used with [`healpy`](https://healpy.readthedocs.io/en/latest/index.html), a python wrapper of `healpix`.
+<!-- #endregion -->
+
+```python id="GPzMLmYO98my" colab={"base_uri": "https://localhost:8080/"} outputId="cf9b98ea-1656-4bb2-b199-2e1a6ca9c7fd"
+# Download the data needed for the notebook
+!wget https://phy-act1.princeton.edu/public/zatkins/act_planck_dr5.01_s08s18_AA_f150_night_map_d56.fits
+```
+
+```python id="kDFKT4bz89Ra" colab={"base_uri": "https://localhost:8080/"} outputId="110af6c4-2ada-4a21-862a-e280725c7581"
+# Install neccesary packages
+!pip install pixell
+```
+
+```python id="s3We41ht94xX"
+# Import packages
+from pixell import curvedsky, enmap, enplot
+import healpy as hp
+import numpy as np
+import matplotlib.pyplot as plt
+```
+
+<!-- #region id="RFGNWqMC9yb5" -->
+**Reading maps from disk**
+
+For more details on how to use maps in pixell take a look at the map manipulation notebook!
+<!-- #endregion -->
+
+```python id="NX2A3eIk-y0J" colab={"base_uri": "https://localhost:8080/"} outputId="bd20d480-8f2e-4d3e-e084-10fc0eb7bf0c"
+## This map has I, Q, U components which can each be accessed individually
+imap = enmap.read_map("act_planck_dr5.01_s08s18_AA_f150_night_map_d56.fits")
+
+print(imap[0].shape)
+
+# To access the I component we can call imap[0].
+# Q and U would be imap[1] and imap[2] respectively.
+```
+
+<!-- #region id="_vJ5OYvI9yjp" -->
+A spherical harmonic transform (SHT) is analagous to an FFT, but for maps that live on the sphere rather than the flat sky. Their output is typically referred to as an *alm*, which are the components in the input map in the [spherical harmonic basis](https://en.wikipedia.org/wiki/Spherical_harmonics#Spherical_harmonics_expansion). Conventionally, each *alm* is represented as a 1d vector: all of the 2d information in the map gets reshaped into a 1d list of numbers in spherical harmonic space. If the map has a polarization component (so, a shape like `(3, Ny, Nx)`), then the output shape will be `(3, nalm)`, etc.
+
+**Converting between maps and alms**
+
+`pixell.curvedsky` has functions that allow users to convert maps to and from alms. In the next cell we'll demonstrate how to use these.
+
+
+<!-- #endregion -->
+
+```python id="zQ1LqS_W-8Ul"
+# The transformation is limited by the `lmax` factor. Increasing this will make
+# the alms exact on smaller scales but will also result in slower run times
+lmax = 4000
+
+alms = curvedsky.map2alm(imap[0], lmax=lmax)
+```
+
+<!-- #region id="aDqVWvk28FLI" -->
+Unlike an FFT, the SHT is not fully information-preserving. Specifically, we need to select the maximum "ell" or "lmax" -- the minimum angular scale -- to calculate. Selecting a low value for the lmax will only calculate the *alm* for the larger-scale features, but will be faster, and vice versa. The size of the *alm* will reflect the specified lmax.
+
+Let's query the alms shape. The spherical harmonics assume the input map is real to speed up calculation. Thus we expect there to be `(lmax + 1) * (lmax + 2) / 2` (why?) complex numbers:
+<!-- #endregion -->
+
+```python colab={"base_uri": "https://localhost:8080/"} id="rKnX3LtN8H87" outputId="12e8f885-45ef-4206-c679-3c937664f6c1"
+print(alms.shape)
+
+print((lmax+1) * (lmax+2) / 2, alms.dtype)
+```
+
+<!-- #region id="nBgshpw58Jam" -->
+As expected, it is a 1d representation of the map in the spherical harmonic basis (up to ell=4000). If you want to know where in this array each *l* and *m* is located, we can do it (but it is rarely necessary):
+<!-- #endregion -->
+
+```python colab={"base_uri": "https://localhost:8080/"} id="82Ar-lZY9sww" outputId="4f1235e0-e61c-4f5b-e2e3-46e07e7e7714"
+# an "alm_info" object contains lots of info and methods that can help with
+# SHTs!
+ainfo = curvedsky.alm_info(lmax=lmax)
+ind = ainfo.lm2ind(l=100, m=99)
+print(ind, alms[ind])
+```
+
+<!-- #region id="xi_1UfFO9rat" -->
+Users can also pass an `alm_info` object into many `curvedsky` functions instead of `lmax` directly. This can be helpful if, for instance, we wish to get the returned *alm* in a "rectangular" (2d-compatible, useful for dealing with l's separately from m's) ordering instead of the default (1d, called "triangular"):
+<!-- #endregion -->
+
+```python colab={"base_uri": "https://localhost:8080/", "height": 542} id="Pgxqle8UA-q4" outputId="346f418b-4436-4bcb-efa3-9c9f6d94db36"
+ainfo_rect = curvedsky.alm_info(lmax=lmax, layout='rectangular')
+alms_rect = curvedsky.map2alm(imap[0], ainfo=ainfo_rect)
+
+print(alms_rect.shape)
+print(f'expect (lmax+1)**2 = {(lmax+1)**2}')
+
+# l's are across the columns, m's are across the rows
+plt.imshow(np.log10(abs(alms_rect)).reshape(-1, (lmax+1)), origin='lower')
+```
+
+<!-- #region id="ucU7wxOGA8hL" -->
+`alm_info` objects have other useful methods (such as transferring from one layout to another, and multiplying by l-dependent functions), and we encourage advanced users to check them out!
+
+`pixell` also can transform an *alm* back to map space. Again, unless an `alm_info` object is explicitly passed, it is assumed that an *alm* is in the default "triangular" layout.
+<!-- #endregion -->
+
+```python id="6shX78elZYW9"
+# You can also convert the alms back to maps with `curvedsky`. This will project
+# the alms onto an existing enmap so you'll also need to provide an enmap for
+# the function. If it's not empty, it will be overwritten!
+
+out = imap[0]*0 # a new ndmap with 0's and the same shape, dtype, wcs as the input
+omap = curvedsky.alm2map(alms, out)
+```
+
+```python colab={"base_uri": "https://localhost:8080/", "height": 1000} id="BFVUGlUZZ7hR" outputId="8ac9c902-8977-4470-bbf7-c2ce4f5cda53"
+# We can plot the two maps and check if they look consistent
+
+enplot.pshow(imap[0], downgrade=4, colorbar=True, range=250)
+enplot.pshow(omap, downgrade=4, colorbar=True, range=250)
+enplot.pshow(omap - imap[0], downgrade=4, colorbar=True, range=250)
+```
+
+<!-- #region id="KiwCFIrOEtjW" -->
+Note the main difference between the output and the input is "ringing" around bright point sources. This is because we specified an lmax of 4000 -- we bandlimited the input and therefore excluded smaller scale information. Point sources have signal at small scales -- we are seeing the high-frequency (small-scale) information beyond l's of 4000.
+
+Like the FFT `map2harm` function, we can handle polarized maps automatically. Remember `imap` is polarized:
+<!-- #endregion -->
+
+```python colab={"base_uri": "https://localhost:8080/", "height": 1000} id="De6wPCCoF-CT" outputId="c5724255-1cef-4e8d-cb9b-029b765d0b66"
+print(imap.shape)
+
+enplot.pshow(imap[0], downgrade=4, colorbar=True)
+enplot.pshow(imap[1:], downgrade=4, colorbar=True, color='gray')
+```
+
+<!-- #region id="ubIiXjCbGAX9" -->
+By default, `map2alm` will assume a polarized map with 3 components -- I, Q, and U -- and give the output *alms* in T (same as I), E, and B. This is controlled by the `spin` argument:
+<!-- #endregion -->
+
+```python id="F2sg8PKzqrwq" colab={"base_uri": "https://localhost:8080/"} outputId="021e8d53-80d4-45b1-ca4f-d464e035a7d5"
+# We can also convert the polarized maps to E and B maps using the `map2alm` function
+
+# Spin tells `map2alm` how to treat the different components.
+# 0 refers to a scalar transform for the I (T) component
+# 2 refers to a spin-2 transform for the Q and U components.
+
+alms = curvedsky.map2alm(imap, spin=[0,2], lmax=lmax) # spin=[0, 2] is default
+
+print(alms.shape)
+```
+
+<!-- #region id="AW4HcVDIGwFC" -->
+Likewise, by default, `alm2map` converts from T, E, and B back into I, Q and U:
+<!-- #endregion -->
+
+```python colab={"base_uri": "https://localhost:8080/", "height": 1000} id="lp58schSG3b9" outputId="bffbdfe3-adb8-4f60-b8b4-68d6ac8ed09c"
+out = imap*0 # a new ndmap with 0's and the same shape, dtype, wcs as the input
+omap = curvedsky.alm2map(alms, out) # spin=[0, 2] is default
+
+print(omap.shape)
+
+enplot.pshow(omap[0], downgrade=4, colorbar=True)
+enplot.pshow(omap[1:], downgrade=4, colorbar=True, color='gray')
+```
+
+<!-- #region id="p8KeW42kHnGD" -->
+If we want to visualize the E and B maps, rather than Q and U, we first need to do `map2alm` with the default `spin=[0,2]` and then `alm2map` with a spin-0 transform:
+<!-- #endregion -->
+
+```python colab={"base_uri": "https://localhost:8080/", "height": 1000} id="iUZqKzwnsZfs" outputId="1beb0997-e8ec-4f06-dc82-0b0237f2ef53"
+# we can then project these to map space
+IEBmap = curvedsky.alm2map(alms, imap.copy(), spin=[0,0]) # specify "0" for the Q, U components now
+
+print(IEBmap.shape)
+
+enplot.pshow(IEBmap[0], downgrade=4, colorbar=True)
+enplot.pshow(IEBmap[1:], downgrade=4, colorbar=True, color='gray')
+```
+
+<!-- #region id="b9F0nNUDjJNH" -->
+As expected, we see signal-dominated E modes, but B is consistent with noise!
+
+**Filtering the maps**
+
+Given some filter `fl` you can also filter alms using the `curvedsky.almxfl` function.
+<!-- #endregion -->
+
+```python colab={"base_uri": "https://localhost:8080/", "height": 469} id="WpJcnjf-hKjY" outputId="506b7838-b4dc-4fd6-e103-21918b15f673"
+# Lets start by creating a filter
+fl = np.ones(lmax+1) # l=0 is one of the ells!
+fl[:200] = 0         # cut out large scales
+
+# Let's plot the filter.
+plt.plot(fl)
+plt.ylabel("Filter value")
+plt.xlabel("ell")
+plt.show()
+```
+
+<!-- #region id="ZbUQayeEihXn" -->
+This filter will set large scale modes to 0. The filter itself could be any function of ell that you choose, this one was just chosen to demonstrate the process.
+<!-- #endregion -->
+
+```python id="zmSPzXd9ig8Z"
+# Let's apply the filter
+alms = curvedsky.map2alm(imap[0], lmax=lmax)
+filtered_alms = curvedsky.almxfl(alms, fl)
+```
+
+```python id="fsLDYKqBVF5k"
+# We can also try filtering out the small scales for comparison
+fl = np.ones(lmax + 1)
+fl[200:] = 0
+
+filtered_alms_small_scales = curvedsky.almxfl(alms, fl)
+```
+
+```python id="WwoSMTJjS9Ga" colab={"base_uri": "https://localhost:8080/", "height": 742} outputId="721368e0-8650-4264-a13c-7c55dd6eb13e"
+# We can then project the filtered alms to map space and take a look at the resulting map
+filtered_map = curvedsky.alm2map(filtered_alms, imap[0].copy())
+filtered_map_small_scales = curvedsky.alm2map(filtered_alms_small_scales, imap[0].copy())
+enplot.pshow(filtered_map, downgrade=4, colorbar=True)
+enplot.pshow(filtered_map_small_scales, downgrade=4, colorbar=True)
+```
+
+<!-- #region id="QDoBLL4Qixey" -->
+Here we can see that in the first map the large scale modes are no longer visible as they've been filtered out. On the other hand, the second map shows just the large scale modes as we've removed the small scale modes with the second filter. `almxfl` can also accept functions of ell instead of a filter array.
+
+**Calculate a power spectrum**
+
+Just like in the FFT case, we can calculate the power in the maps as a function of angular scale. Very conveniently, because the *alms* are naturally in a basis where angular scale is directly indexed by `l`, we don't need any intermediate and inexact "binning" function like for FFTs. Instead we just use `curvedsky.alm2cl`.
+
+We do still want to apodize the map edges to avoid discontinuities at the map edge:
+<!-- #endregion -->
+
+```python colab={"base_uri": "https://localhost:8080/"} id="S2nCzJ2AnXRY" outputId="b173f778-92a6-4ef9-f61e-20e2af9b67a5"
+# get an apodized mask, multiply the map before doing map2alm
+taper_mask = enmap.apod(enmap.ones(imap[0].shape, imap[0].wcs), width=100)
+alms_taper = curvedsky.map2alm(taper_mask * imap, lmax=lmax)
+
+# get the correction factor that accounts for the power lost due to only observing a
+# fraction of the sky
+# enmap.pixsizemap is a map of all the physical pixel areas in steradians
+w2 = np.sum(taper_mask.pixsizemap() * taper_mask**2) / (4*np.pi)
+
+# squaring and averaging over m is done by the alm2cl function
+cl = curvedsky.alm2cl(alms_taper) / w2
+
+# The shape here is refers to TT, EE, and BB spectra
+print(cl.shape)
+```
+
+<!-- #region id="9yUfd_mvoz67" -->
+We can plot the cls:
+<!-- #endregion -->
+
+```python colab={"base_uri": "https://localhost:8080/", "height": 475} id="zAPuz7AGo1mJ" outputId="94b17687-2af4-453f-9dc7-f44686fbcdc6"
+l = np.arange(cl.shape[1])
+
+# plot
+for i in range(3):
+  plt.semilogy(l, cl[i] * l *(l+1) / 2 / np.pi, label=['TT', 'EE', 'BB'][i])
+plt.ylim(1e-1, 1e4)
+plt.legend()
+```
+
+<!-- #region id="1n59Ry56qr9R" -->
+By default, `alm2cl` will just get the autospectrum of each component in the *alms*. We can also pass a second, different *alm* to take a cross spectrum. Or, we can get the cross spectra between the different components of an alm like so:
+<!-- #endregion -->
+
+```python colab={"base_uri": "https://localhost:8080/", "height": 892} id="5O0K8YsSq-Dq" outputId="7addb109-e4b9-4fd5-8c16-fc1d863d375a"
+# squaring and averaging over m is done by the alm2cl function
+# take cross spectra using numpy array broadcasting of the input shapes
+clx = curvedsky.alm2cl(alms_taper[:, None], alms_taper[None, :]) / w2
+
+print(clx.shape)
+
+# plot
+for i in range(3):
+  plt.semilogy(l, clx[i, i] * l *(l+1) / 2 / np.pi, label=['TT', 'EE', 'BB'][i])
+plt.ylim(1e-1, 1e4)
+plt.legend()
+plt.show()
+
+for i in range(3):
+  for j in range(i + 1, 3):
+    plt.plot(l, clx[i, j] * l *(l+1) / 2 / np.pi, label='TEB'[i] + 'TEB'[j])
+plt.legend()
+plt.show()
+```
+
+<!-- #region id="FIgq7BMw9ysb" -->
+A real cosmological analysis would need to use a *mode coupling matrix*, not the simple `w2` factor shown here!
+
+**Using Healpy with alms**
+
+Other than the coordinate system, *alms* don't know anything about the map pixelization that produced them. So they are a way of "translating" between different pixelization schemes (but with a the bandlimit set by `lmax`!). This means that once we have an *alm*, we can project it back into a map that uses the `healpix` pixelization using `healpy`:
+<!-- #endregion -->
+
+<!-- #region id="G-LYRFgHVun6" -->
+We can also project the alms to a `healpix` map and plot it with `healpy`. Note that pixell also has specific functions designed for reprojecting to `healpix` which are documented in the  reprojection notebook.
+<!-- #endregion -->
+
+```python colab={"base_uri": "https://localhost:8080/", "height": 327} id="9Lnb4-AHVuJr" outputId="641e4442-96d7-439f-9ad5-e8753ac00af6"
+hp_map = hp.alm2map(alms_taper[0], 4096)
+
+# Because we're only using a small patch of the sky we use cartview to plot
+# and pass `lonra` and `latra` to select the area of the sky we wish to show.
+hp.cartview(hp_map, min = -300, max=300, lonra =  [-10,45], latra =  [-8,5])
+```
+
+<!-- #region id="bCnXZk3IXRsg" -->
+One thing to note is that these reprojections wont automatically set the masked pixells to `hp.UNSEEN`. If you wish to mask data we recommend you project a mask to `healpix` and then assign `hp.UNSEEN` to masked regions based on the reprojected mask.
+<!-- #endregion -->
+
+<!-- #region id="m5A9eBuf3k0Q" -->
+**Further reading and other examples**
+
+The ACT DR4 and DR5 notebooks, which are publicly [available on github](https://github.com/ACTCollaboration/DR4_DR5_Notebooks), include a more realistic example of how to compute power spectra in [Notebook 7](https://github.com/ACTCollaboration/DR4_DR5_Notebooks/blob/master/Notebooks/Section_7_power_spectra_part_1.ipynb).
+
+For more examples of how to use `pixell` please see the full set of notebooks available on github.
+<!-- #endregion -->
+
+```python id="hPMLJBqu4Zty"
+
+```
