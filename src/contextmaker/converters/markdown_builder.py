@@ -23,6 +23,66 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def build_sphinx_directly(source_dir: str, output_format: str = 'text') -> str | None:
+    """
+    Build Sphinx documentation directly using Python without requiring 'make'.
+    This is a fallback method when Makefile is not available.
+    
+    Args:
+        source_dir (str): Path to the Sphinx source directory
+        output_format (str): Desired output format ('text' or 'html')
+        
+    Returns:
+        str | None: Path to the build directory if successful, None otherwise
+    """
+    logger.info(f"🔧 Building Sphinx documentation directly (Python fallback) from: {source_dir}")
+    
+    # Check if sphinx-build is available
+    if not shutil.which("sphinx-build"):
+        logger.error("❌ 'sphinx-build' command not found on this system.")
+        logger.error("💡 Install Sphinx: pip install sphinx")
+        return None
+    
+    try:
+        # Determine build directory
+        build_dir = os.path.join(source_dir, "_build")
+        output_dir = os.path.join(build_dir, output_format)
+        
+        # Create build directory if it doesn't exist
+        os.makedirs(build_dir, exist_ok=True)
+        
+        # Build command
+        cmd = [
+            "sphinx-build",
+            "-b", output_format,
+            "-d", os.path.join(build_dir, "doctrees"),
+            source_dir,
+            output_dir
+        ]
+        
+        logger.info(f"🔧 Running: {' '.join(cmd)}")
+        
+        # Execute sphinx-build
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            cwd=source_dir
+        )
+        
+        if result.returncode == 0:
+            logger.info(f"✅ Sphinx build successful! Output in: {output_dir}")
+            return output_dir
+        else:
+            logger.error(f"❌ Sphinx build failed with return code: {result.returncode}")
+            logger.error(f"❌ Error output: {result.stderr}")
+            return None
+            
+    except Exception as e:
+        logger.error(f"❌ Error building Sphinx documentation: {e}")
+        return None
+
+
 def build_via_makefile(makefile_dir: str, source_root: str, output_format: str = 'text') -> str | None:
     """
     Build Sphinx documentation using the Makefile found in makefile_dir.
@@ -35,6 +95,17 @@ def build_via_makefile(makefile_dir: str, source_root: str, output_format: str =
     Returns:
         str | None: Path to the build directory if successful, None otherwise
     """
+    # Check if 'make' command is available
+    if not shutil.which("make"):
+        logger.error("❌ 'make' command not found on this system.")
+        logger.error("📋 Sphinx Makefile functionality requires GNU Make to be installed.")
+        logger.error("💡 ContextMaker will automatically fall back to standard Sphinx method.")
+        logger.error("🔧 To install GNU Make:")
+        logger.error("   - macOS: Install Xcode Command Line Tools (xcode-select --install)")
+        logger.error("   - Linux: sudo apt-get install make (Ubuntu/Debian) or sudo yum install make (RHEL/CentOS)")
+        logger.error("   - Windows: Install MinGW, Cygwin, or use WSL")
+        return None
+    
     try:
         # Change to the makefile directory
         original_cwd = os.getcwd()
@@ -78,7 +149,7 @@ def build_via_makefile(makefile_dir: str, source_root: str, output_format: str =
                         '',
                         '# Text output target added by contextmaker',
                         'text:',
-                        '\t$(SPHINXBUILD) -b text $(ALLSPHINXOPTS) $(BUILDDIR)/text',
+                        '\t$(SPHINXBUILD) -b text $(SPHINXOPTS) "$(SOURCEDIR)" "$(BUILDDIR)/text"',
                         '\t@echo',
                         '\t@echo "Build finished. The text files are in $(BUILDDIR)/text."',
                         ''

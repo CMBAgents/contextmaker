@@ -162,13 +162,29 @@ def main():
 
         if doc_format == 'sphinx_makefile':
             # Highest priority: Use Sphinx Makefile
-            from contextmaker.converters.markdown_builder import build_via_makefile, combine_text_files, find_notebooks_in_doc_dirs, convert_notebook
+            from contextmaker.converters.markdown_builder import build_via_makefile, build_sphinx_directly, combine_text_files, find_notebooks_in_doc_dirs, convert_notebook
             makefile_dir = auxiliary.find_sphinx_makefile(input_path)
             if makefile_dir:
                 logger.info(f"📋 Using Sphinx Makefile from: {makefile_dir}")
                 
-                # Build documentation via Makefile
+                # Try Makefile first
                 build_dir = build_via_makefile(makefile_dir, input_path, 'text')
+                
+                if not build_dir:
+                    # Makefile failed, try direct Sphinx building as fallback
+                    logger.info("📋 Makefile build failed, trying direct Sphinx building...")
+                    sphinx_source = auxiliary.find_sphinx_source(input_path)
+                    if sphinx_source:
+                        build_dir = build_sphinx_directly(sphinx_source, 'text')
+                        if build_dir:
+                            logger.info("✅ Direct Sphinx build successful as fallback!")
+                        else:
+                            logger.error("❌ Both Makefile and direct Sphinx building failed")
+                            success = False
+                    else:
+                        logger.error("❌ Could not find Sphinx source directory for fallback")
+                        success = False
+                
                 if build_dir:
                     # Create output file path
                     if extension == 'txt':
@@ -251,7 +267,7 @@ def main():
                             except Exception:
                                 pass
                 else:
-                    logger.warning("⚠️ Makefile build failed, falling back to standard Sphinx method")
+                    logger.warning("⚠️ All Sphinx build methods failed, falling back to standard Sphinx method")
                     doc_format = 'sphinx'  # Fall back to standard method
                     success = False
             else:
@@ -387,13 +403,29 @@ def make(library_name, output_path=None, input_path=None, extension='txt'):
 
         if doc_format == 'sphinx_makefile':
             # Highest priority: Use Sphinx Makefile
-            from contextmaker.converters.markdown_builder import build_via_makefile, combine_text_files, find_notebooks_in_doc_dirs, convert_notebook
+            from contextmaker.converters.markdown_builder import build_via_makefile, build_sphinx_directly, combine_text_files, find_notebooks_in_doc_dirs, convert_notebook
             makefile_dir = auxiliary.find_sphinx_makefile(input_path)
             if makefile_dir:
                 logger.info(f"📋 Using Sphinx Makefile from: {makefile_dir}")
                 
-                # Build documentation via Makefile
+                # Try Makefile first
                 build_dir = build_via_makefile(makefile_dir, input_path, 'text')
+                
+                if not build_dir:
+                    # Makefile failed, try direct Sphinx building as fallback
+                    logger.info("📋 Makefile build failed, trying direct Sphinx building...")
+                    sphinx_source = auxiliary.find_sphinx_source(input_path)
+                    if sphinx_source:
+                        build_dir = build_sphinx_directly(sphinx_source, 'text')
+                        if build_dir:
+                            logger.info("✅ Direct Sphinx build successful as fallback!")
+                        else:
+                            logger.error("❌ Both Makefile and direct Sphinx building failed")
+                            success = False
+                    else:
+                        logger.error("❌ Could not find Sphinx source directory for fallback")
+                        success = False
+                
                 if build_dir:
                     # Create output file path
                     if extension == 'txt':
@@ -476,7 +508,7 @@ def make(library_name, output_path=None, input_path=None, extension='txt'):
                             except Exception:
                                 pass
                 else:
-                    logger.warning("⚠️ Makefile build failed, falling back to standard Sphinx method")
+                    logger.warning("⚠️ All Sphinx build methods failed, falling back to standard Sphinx method")
                     doc_format = 'sphinx'  # Fall back to standard method
                     success = False
             else:

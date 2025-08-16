@@ -5,6 +5,7 @@ import logging
 import platform
 import subprocess
 import sys
+import shutil
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +20,11 @@ def find_sphinx_makefile(lib_path: str) -> str | None:
     Returns:
         str | None: Path to the directory containing the Makefile, or None if not found.
     """
+    # Check if 'make' command is available before searching for Makefiles
+    if not shutil.which("make"):
+        logger.debug("📋 'make' command not available, skipping Makefile search")
+        return None
+    
     for root, dirs, files in os.walk(lib_path):
         # Skip common non-relevant directories for performance
         dirs[:] = [d for d in dirs if d not in ['.git', '__pycache__', 'build', 'dist', '.pytest_cache', 'node_modules', '.venv', 'venv']]
@@ -47,17 +53,53 @@ def has_sphinx_makefile(lib_path: str) -> bool:
         lib_path (str): Path to the library.
         
     Returns:
-        bool: True if a Sphinx Makefile is found, else False.
+        bool: True if a Sphinx Makefile is found and 'make' is available, else False.
     """
+    # First check if 'make' is available
+    if not shutil.which("make"):
+        return False
+    
     return find_sphinx_makefile(lib_path) is not None
+
+
+def get_best_sphinx_method(lib_path: str) -> tuple[str, str | None]:
+    """
+    Determine the best Sphinx documentation method to use based on system capabilities.
+    
+    Args:
+        lib_path (str): Path to the library root
+        
+    Returns:
+        tuple[str, str | None]: (method_type, method_specific_path)
+            - method_type: 'sphinx_makefile', 'sphinx_direct', or 'sphinx_standard'
+            - method_specific_path: Path to Makefile directory or Sphinx source, or None
+    """
+    # First check for Sphinx Makefile
+    makefile_dir = find_sphinx_makefile(lib_path)
+    
+    if makefile_dir:
+        if shutil.which("make"):
+            logger.info("📋 Sphinx Makefile found and 'make' is available - using highest priority method")
+            return 'sphinx_makefile', makefile_dir
+        else:
+            logger.info("📋 Sphinx Makefile found but 'make' not available - will use direct Sphinx building")
+            return 'sphinx_direct', makefile_dir
+    
+    # Check for standard Sphinx documentation
+    sphinx_source = find_sphinx_source(lib_path)
+    if sphinx_source:
+        logger.info("📚 Standard Sphinx documentation found")
+        return 'sphinx_standard', sphinx_source
+    
+    return 'none', None
 
 
 def find_format(lib_path: str) -> str:
     """
     Detect the documentation format of a given library.
     Priority order:
-    1. Sphinx Makefile (highest priority)
-    2. Sphinx documentation
+    1. Sphinx Makefile (highest priority) - if 'make' is available
+    2. Sphinx documentation (fallback if Makefile found but 'make' unavailable)
     3. Jupyter notebooks
     4. Inline docstrings
     5. Raw source code
@@ -71,24 +113,35 @@ def find_format(lib_path: str) -> str:
     Raises:
         ValueError: If no valid format is detected.
     """
-    if has_sphinx_makefile(lib_path):
-        logger.info(" 📋 Detected Sphinx Makefile - highest priority method.")
-        return 'sphinx_makefile'
-    elif has_documentation(lib_path):
-        logger.info(" 📚 Detected Sphinx-style documentation.")
+    # First check for Sphinx Makefile
+    makefile_dir = find_sphinx_makefile(lib_path)
+    
+    if makefile_dir:
+        if shutil.which("make"):
+            logger.info("📋 Detected Sphinx Makefile - using highest priority method.")
+            return 'sphinx_makefile'
+        else:
+            logger.info("📋 Sphinx Makefile found but 'make' command not available.")
+            logger.info("💡 Install GNU Make to use the highest priority Makefile method.")
+            logger.info("📚 Falling back to standard Sphinx method.")
+            # Continue to check for standard Sphinx documentation
+    
+    # Check for standard Sphinx documentation
+    if has_documentation(lib_path):
+        logger.info("📚 Detected Sphinx-style documentation.")
         return 'sphinx'
     elif has_notebook(lib_path):
-        logger.info(" 📒 Detected Jupyter notebooks.")
+        logger.info("📒 Detected Jupyter notebooks.")
         return 'notebook'
     elif has_docstrings(lib_path):
-        logger.info(" 📄 Detected inline docstrings.")
+        logger.info("📄 Detected inline docstrings.")
         return 'docstrings'
     elif has_source(lib_path):
-        logger.info(" 💻 Detected raw source code.")
+        logger.info("💻 Detected raw source code.")
         return 'source'
     else:
         # For installed packages without documentation, try to extract docstrings from source
-        logger.info(" 📦 Detected installed package, extracting docstrings from source code.")
+        logger.info("📦 Detected installed package, extracting docstrings from source code.")
         return 'docstrings'
 
 

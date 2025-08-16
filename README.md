@@ -98,12 +98,73 @@ jupyter notebook
 ```
 This will open the Jupyter interface in your web browser.
 
-3. **Add Your Environment as a Jupyter Kernel (Optional but recommended)**  
-If you are using a virtual environment, you can add it as a Jupyter kernel so you can select it in the notebook interface:
-```bash
-python -m ipykernel install --user --name context_env --display-name "Python (context_env)"
-```
-Then, in the Jupyter interface, select the "Python (context_env)" kernel for your notebook.
+---
 
-4. **Open the notebook**  
-In the Jupyter interface, navigate to the `notebook/` directory and open the desired `.ipynb` file.
+## 🚀 Advanced Features
+
+### Intelligent Sphinx Documentation Detection
+
+ContextMaker automatically detects and uses the most efficient method for building Sphinx documentation:
+
+#### 1. **Sphinx Makefile (Highest Priority)**
+- Automatically detects Sphinx Makefiles in your project
+- Adds missing `text` targets for text output
+- Uses `make text` for optimal build performance
+- **Requires:** GNU Make installed on your system
+
+#### 2. **Direct Sphinx Building (Smart Fallback)**
+- Automatically falls back to direct `sphinx-build` calls when `make` is unavailable
+- No manual intervention required
+- Works on all systems with Sphinx installed
+- **Requires:** Only Sphinx (`pip install sphinx`)
+
+#### 3. **Standard Sphinx Processing**
+- Traditional Sphinx documentation processing
+- Handles complex configurations and custom themes
+- **Requires:** Sphinx installed
+
+### Automatic Fallback System
+
+ContextMaker intelligently handles system dependencies:
+
+```bash
+# If 'make' is available: Uses Makefile (fastest)
+📋 Sphinx Makefile found and 'make' is available - using highest priority method
+
+# If 'make' is not available: Automatically falls back to direct Sphinx
+📋 Sphinx Makefile found but 'make' not available - will use direct Sphinx building
+
+# If no Makefile: Uses standard Sphinx method
+📚 Standard Sphinx documentation found
+```
+
+### System Requirements
+
+- **Python 3.8+** (required)
+- **Sphinx** (required for Sphinx projects)
+- **GNU Make** (optional, for optimal performance)
+
+#### Installing GNU Make (Optional)
+
+**macOS:**
+```bash
+xcode-select --install
+```
+
+**Ubuntu/Debian:**
+```bash
+sudo apt-get install make
+```
+
+**RHEL/CentOS:**
+```bash
+sudo yum install make
+```
+
+**Windows:**
+- Install MinGW, Cygwin, or use WSL
+- Or let ContextMaker automatically use the Python fallback
+
+---
+
+## 📚 Supported Documentation Formats
