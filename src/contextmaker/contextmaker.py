@@ -44,6 +44,7 @@ def parse_args():
     parser.add_argument('--output', '-o', help='Output path (default: ~/contextmaker_output/)')
     parser.add_argument('--input_path', '-i', help='Manual path to library (overrides automatic search)')
     parser.add_argument('--extension', '-e', choices=['txt', 'md'], default='txt', help='Output file extension: txt (default) or md')
+    parser.add_argument('--rough', '-r', action='store_true', help='Save directly to specified output file without creating folders')
     return parser.parse_args()
 
 
@@ -152,7 +153,17 @@ def main():
             logger.error(f"Input path '{input_path}' is empty.")
             sys.exit(1)
 
-        os.makedirs(output_path, exist_ok=True)
+        # Handle rough mode for main function
+        if args.rough and args.output and os.path.splitext(output_path)[1]:
+            # Rough mode: output_path is a file path, extract directory
+            output_dir = os.path.dirname(output_path)
+            if output_dir and not os.path.exists(output_dir):
+                os.makedirs(output_dir, exist_ok=True)
+            logger.info(f" Rough mode enabled: will save directly to {output_path}")
+        else:
+            # Normal mode: output_path is a directory
+            if not args.output or not os.path.splitext(output_path)[1]:  # No extension, treat as directory
+                os.makedirs(output_path, exist_ok=True)
 
         doc_format = auxiliary.find_format(input_path)
         logger.info(f"  Detected documentation format: {doc_format}")
@@ -188,7 +199,12 @@ def main():
                 if build_dir:
                     # Create output file path
                     if extension == 'txt':
-                        output_file = os.path.join(output_path, f"{args.library_name}.txt")
+                        if args.rough and args.output and os.path.splitext(output_path)[1]:
+                            # Rough mode: use output_path directly as it's already a file path
+                            output_file = output_path
+                        else:
+                            # Normal mode: create filename in output directory
+                            output_file = os.path.join(output_path, f"{args.library_name}.txt")
                         # Combine text files directly
                         success = combine_text_files(build_dir, output_file, args.library_name)
                         
@@ -259,7 +275,12 @@ def main():
                                     logger.info(f"✅ Added {len(notebooks_found)} notebooks to documentation")
                             
                             # Convert to markdown
-                            output_file = os.path.join(output_path, f"{args.library_name}.md")
+                            if args.rough and args.output and os.path.splitext(output_path)[1]:
+                                # Rough mode: use output_path directly as it's already a file path
+                                output_file = output_path
+                            else:
+                                # Normal mode: create filename in output directory
+                                output_file = os.path.join(output_path, f"{args.library_name}.md")
                             markdown_to_text(temp_txt, output_file)
                             # Clean up temp file
                             try:
@@ -281,7 +302,12 @@ def main():
             if sphinx_source:
                 conf_path = os.path.join(sphinx_source, "conf.py")
                 index_path = os.path.join(sphinx_source, "index.rst")
-                output_file = os.path.join(output_path, f"{args.library_name}.md")
+                if args.rough and args.output and os.path.splitext(output_path)[1]:
+                    # Rough mode: use output_path directly as it's already a file path
+                    output_file = output_path
+                else:
+                    # Normal mode: create filename in output directory
+                    output_file = os.path.join(output_path, f"{args.library_name}.md")
                 build_dir = build_markdown(sphinx_source, conf_path, input_path, robust=False)
                 import glob
                 md_files = glob.glob(os.path.join(build_dir, "*.md"))
@@ -299,8 +325,29 @@ def main():
             else:
                 success = False
         elif not output_file:
-            success = nonsphinx_converter.create_final_markdown(input_path, output_path, args.library_name)
-            output_file = os.path.join(output_path, f"{args.library_name}.md")
+            # For non-Sphinx projects, we need to handle rough mode differently
+            if args.rough and args.output and os.path.splitext(output_path)[1]:
+                # Rough mode: create in temp directory first, then copy to desired location
+                temp_output_dir = os.path.dirname(output_path)
+                success = nonsphinx_converter.create_final_markdown(input_path, temp_output_dir, args.library_name)
+                if success:
+                    # Copy the generated file to the desired location
+                    temp_file = os.path.join(temp_output_dir, f"{args.library_name}.txt")
+                    if os.path.exists(temp_file):
+                        import shutil
+                        shutil.copy2(temp_file, output_path)
+                        output_file = output_path
+                        # Clean up temp file
+                        try:
+                            os.remove(temp_file)
+                        except Exception:
+                            pass
+                    else:
+                        success = False
+            else:
+                # Normal mode: create filename in output directory
+                success = nonsphinx_converter.create_final_markdown(input_path, output_path, args.library_name)
+                output_file = os.path.join(output_path, f"{args.library_name}.md")
         
         if success and output_file:
             logger.info(f" ✅ Conversion completed successfully. Output: {output_file}")
@@ -344,14 +391,15 @@ def main():
         sys.exit(1)
 
 
-def make(library_name, output_path=None, input_path=None, extension='txt'):
+def make(library_name, output_path=None, input_path=None, extension='txt', rough=False):
     """
     Convert a library's documentation to text or markdown format (programmatic API).
     Args:
         library_name (str): Name of the library to convert (e.g., "pixell", "numpy").
-        output_path (str, optional): Output directory. Defaults to ~/your_context_library/.
+        output_path (str, optional): Output directory or file path. Defaults to ~/your_context_library/.
         input_path (str, optional): Manual path to library (overrides automatic search).
         extension (str, optional): Output file extension: 'txt' (default) or 'md'.
+        rough (bool, optional): If True and output_path is a file path, save directly to that file without creating folders.
     Returns:
         str: Path to the generated documentation file, or None if failed.
     """
@@ -380,8 +428,20 @@ def make(library_name, output_path=None, input_path=None, extension='txt'):
         # Determine output path
         if output_path:
             output_path = os.path.abspath(output_path)
+            # Check if output_path is a file path (has extension) and rough mode is enabled
+            if rough and os.path.splitext(output_path)[1]:
+                # Rough mode: output_path is a file path, extract directory
+                output_dir = os.path.dirname(output_path)
+                if output_dir and not os.path.exists(output_dir):
+                    os.makedirs(output_dir, exist_ok=True)
+                logger.info(f" Rough mode enabled: will save directly to {output_path}")
+            else:
+                # Normal mode: output_path is a directory
+                if not os.path.splitext(output_path)[1]:  # No extension, treat as directory
+                    os.makedirs(output_path, exist_ok=True)
         else:
             output_path = auxiliary.get_default_output_path()
+            os.makedirs(output_path, exist_ok=True)
 
         logger.info(f" Input path: {input_path}")
         logger.info(f" Output path: {output_path}")
@@ -393,8 +453,6 @@ def make(library_name, output_path=None, input_path=None, extension='txt'):
         if not os.listdir(input_path):
             logger.error(f"Input path '{input_path}' is empty.")
             return None
-
-        os.makedirs(output_path, exist_ok=True)
 
         doc_format = auxiliary.find_format(input_path)
         logger.info(f"  Detected documentation format: {doc_format}")
@@ -429,7 +487,12 @@ def make(library_name, output_path=None, input_path=None, extension='txt'):
                 if build_dir:
                     # Create output file path
                     if extension == 'txt':
-                        output_file = os.path.join(output_path, f"{library_name}.txt")
+                        if rough and os.path.splitext(output_path)[1]:
+                            # Rough mode: use output_path directly as it's already a file path
+                            output_file = output_path
+                        else:
+                            # Normal mode: create filename in output directory
+                            output_file = os.path.join(output_path, f"{library_name}.txt")
                         # Combine text files directly
                         success = combine_text_files(build_dir, output_file, library_name)
                         
@@ -500,7 +563,12 @@ def make(library_name, output_path=None, input_path=None, extension='txt'):
                                     logger.info(f"✅ Added {len(notebooks_found)} notebooks to documentation")
                             
                             # Convert to markdown
-                            output_file = os.path.join(output_path, f"{library_name}.md")
+                            if rough and os.path.splitext(output_path)[1]:
+                                # Rough mode: use output_path directly as it's already a file path
+                                output_file = output_path
+                            else:
+                                # Normal mode: create filename in output directory
+                                output_file = os.path.join(output_path, f"{library_name}.md")
                             markdown_to_text(temp_txt, output_file)
                             # Clean up temp file
                             try:
@@ -522,7 +590,12 @@ def make(library_name, output_path=None, input_path=None, extension='txt'):
             if sphinx_source:
                 conf_path = os.path.join(sphinx_source, "conf.py")
                 index_path = os.path.join(sphinx_source, "index.rst")
-                output_file = os.path.join(output_path, f"{library_name}.md")
+                if rough and os.path.splitext(output_path)[1]:
+                    # Rough mode: use output_path directly as it's already a file path
+                    output_file = output_path
+                else:
+                    # Normal mode: create filename in output directory
+                    output_file = os.path.join(output_path, f"{library_name}.md")
                 build_dir = build_markdown(sphinx_source, conf_path, input_path, robust=False)
                 import glob
                 md_files = glob.glob(os.path.join(build_dir, "*.md"))
@@ -540,8 +613,29 @@ def make(library_name, output_path=None, input_path=None, extension='txt'):
             else:
                 success = False
         elif not output_file:
-            success = nonsphinx_converter.create_final_markdown(input_path, output_path, library_name)
-            output_file = os.path.join(output_path, f"{library_name}.md")
+            # For non-Sphinx projects, we need to handle rough mode differently
+            if rough and os.path.splitext(output_path)[1]:
+                # Rough mode: create in temp directory first, then copy to desired location
+                temp_output_dir = os.path.dirname(output_path)
+                success = nonsphinx_converter.create_final_markdown(input_path, temp_output_dir, library_name)
+                if success:
+                    # Copy the generated file to the desired location
+                    temp_file = os.path.join(temp_output_dir, f"{library_name}.txt")
+                    if os.path.exists(temp_file):
+                        import shutil
+                        shutil.copy2(temp_file, output_path)
+                        output_file = output_path
+                        # Clean up temp file
+                        try:
+                            os.remove(temp_file)
+                        except Exception:
+                            pass
+                    else:
+                        success = False
+            else:
+                # Normal mode: create filename in output directory
+                success = nonsphinx_converter.create_final_markdown(input_path, output_path, library_name)
+                output_file = os.path.join(output_path, f"{library_name}.md")
 
         if success and output_file:
             logger.info(f" ✅ Conversion completed successfully. Output: {output_file}")

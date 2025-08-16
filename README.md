@@ -74,6 +74,9 @@ contextmaker pixell --input_path /path/to/library/source
 
 # Choose output format (txt or md)
 contextmaker pixell --extension md
+
+# Save directly to specified file without creating folders (rough mode)
+contextmaker pixell --output ./pixell_context.txt --rough
 ```
 
 #### Output
@@ -102,6 +105,9 @@ contextmaker.make("pixell", input_path="/path/to/pixell/source")
 
 # Choose output format (txt or md)
 contextmaker.make("pixell", extension="md")
+
+# Save directly to specified file without creating folders (rough mode)
+contextmaker.make("pixell", output_path="./pixell_context.txt", rough=True)
 ```
 
 ## Examples
