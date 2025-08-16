@@ -9,20 +9,72 @@ import sys
 logger = logging.getLogger(__name__)
 
 
+def find_sphinx_makefile(lib_path: str) -> str | None:
+    """
+    Recursively search for a Sphinx Makefile in the library directory.
+    
+    Args:
+        lib_path (str): Path to the root of the library.
+        
+    Returns:
+        str | None: Path to the directory containing the Makefile, or None if not found.
+    """
+    for root, dirs, files in os.walk(lib_path):
+        # Skip common non-relevant directories for performance
+        dirs[:] = [d for d in dirs if d not in ['.git', '__pycache__', 'build', 'dist', '.pytest_cache', 'node_modules', '.venv', 'venv']]
+        
+        for file in files:
+            if file.lower() == 'makefile':
+                makefile_path = os.path.join(root, file)
+                try:
+                    with open(makefile_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    # Check if this Makefile contains Sphinx-related targets
+                    if any(target in content.lower() for target in ['sphinx', 'html', 'docs', 'build']):
+                        logger.info(f"📋 Found Sphinx Makefile at: {makefile_path}")
+                        return root
+                except Exception as e:
+                    logger.debug(f"Could not read Makefile {makefile_path}: {e}")
+                    continue
+    return None
+
+
+def has_sphinx_makefile(lib_path: str) -> bool:
+    """
+    Check if the library contains a Sphinx Makefile.
+    
+    Args:
+        lib_path (str): Path to the library.
+        
+    Returns:
+        bool: True if a Sphinx Makefile is found, else False.
+    """
+    return find_sphinx_makefile(lib_path) is not None
+
+
 def find_format(lib_path: str) -> str:
     """
     Detect the documentation format of a given library.
+    Priority order:
+    1. Sphinx Makefile (highest priority)
+    2. Sphinx documentation
+    3. Jupyter notebooks
+    4. Inline docstrings
+    5. Raw source code
 
     Args:
         lib_path (str): Path to the root of the library.
 
     Returns:
-        str: One of ['sphinx', 'notebook', 'docstrings', 'source'].
+        str: One of ['sphinx_makefile', 'sphinx', 'notebook', 'docstrings', 'source'].
 
     Raises:
         ValueError: If no valid format is detected.
     """
-    if has_documentation(lib_path):
+    if has_sphinx_makefile(lib_path):
+        logger.info(" 📋 Detected Sphinx Makefile - highest priority method.")
+        return 'sphinx_makefile'
+    elif has_documentation(lib_path):
         logger.info(" 📚 Detected Sphinx-style documentation.")
         return 'sphinx'
     elif has_notebook(lib_path):

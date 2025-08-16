@@ -160,7 +160,106 @@ def main():
         extension = args.extension
         output_file = None
 
-        if doc_format == 'sphinx':
+        if doc_format == 'sphinx_makefile':
+            # Highest priority: Use Sphinx Makefile
+            from contextmaker.converters.markdown_builder import build_via_makefile, combine_text_files, find_notebooks_in_doc_dirs, convert_notebook
+            makefile_dir = auxiliary.find_sphinx_makefile(input_path)
+            if makefile_dir:
+                logger.info(f"📋 Using Sphinx Makefile from: {makefile_dir}")
+                
+                # Build documentation via Makefile
+                build_dir = build_via_makefile(makefile_dir, input_path, 'text')
+                if build_dir:
+                    # Create output file path
+                    if extension == 'txt':
+                        output_file = os.path.join(output_path, f"{args.library_name}.txt")
+                        # Combine text files directly
+                        success = combine_text_files(build_dir, output_file, args.library_name)
+                        
+                        # Add notebooks to the text file if any are found
+                        if success:
+                            notebooks_found = find_notebooks_in_doc_dirs(input_path)
+                            if notebooks_found:
+                                logger.info(f"📒 Found {len(notebooks_found)} notebooks, appending to documentation...")
+                                # Read the current content
+                                with open(output_file, 'r', encoding='utf-8') as f:
+                                    current_content = f.read()
+                                
+                                # Append notebooks
+                                notebook_content = []
+                                for nb_path in notebooks_found:
+                                    notebook_md = convert_notebook(nb_path)
+                                    if notebook_md:
+                                        notebook_content.append(f"\n## Notebook: {os.path.basename(nb_path)}\n")
+                                        # Read the content of the markdown file, not just the path
+                                        try:
+                                            with open(notebook_md, 'r', encoding='utf-8') as f:
+                                                notebook_md_content = f.read()
+                                            notebook_content.append(notebook_md_content)
+                                        except Exception as e:
+                                            logger.warning(f"⚠️ Could not read notebook markdown {notebook_md}: {e}")
+                                            notebook_content.append(f"[Notebook content could not be read: {notebook_md}]")
+                                        notebook_content.append("\n" + "-" * 50 + "\n")
+                                
+                                if notebook_content:
+                                    # Write back with notebooks
+                                    with open(output_file, 'w', encoding='utf-8') as f:
+                                        f.write(current_content + ''.join(notebook_content))
+                                    logger.info(f"✅ Added {len(notebooks_found)} notebooks to documentation")
+                    else:
+                        # For markdown output, we'll need to convert text to markdown
+                        temp_txt = os.path.join(output_path, f"{args.library_name}_temp.txt")
+                        success = combine_text_files(build_dir, temp_txt, args.library_name)
+                        
+                        # Add notebooks to the temp text file if any are found
+                        if success:
+                            notebooks_found = find_notebooks_in_doc_dirs(input_path)
+                            if notebooks_found:
+                                logger.info(f"📒 Found {len(notebooks_found)} notebooks, appending to documentation...")
+                                # Read the current content
+                                with open(temp_txt, 'r', encoding='utf-8') as f:
+                                    current_content = f.read()
+                                
+                                # Append notebooks
+                                notebook_content = []
+                                for nb_path in notebooks_found:
+                                    notebook_md = convert_notebook(nb_path)
+                                    if notebook_md:
+                                        notebook_content.append(f"\n## Notebook: {os.path.basename(nb_path)}\n")
+                                        # Read the content of the markdown file, not just the path
+                                        try:
+                                            with open(notebook_md, 'r', encoding='utf-8') as f:
+                                                notebook_md_content = f.read()
+                                            notebook_content.append(notebook_md_content)
+                                        except Exception as e:
+                                            logger.warning(f"⚠️ Could not read notebook markdown {notebook_md}: {e}")
+                                            notebook_content.append(f"[Notebook content could not be read: {notebook_md}]")
+                                        notebook_content.append("\n" + "-" * 50 + "\n")
+                                
+                                if notebook_content:
+                                    # Write back with notebooks
+                                    with open(temp_txt, 'w', encoding='utf-8') as f:
+                                        f.write(current_content + ''.join(notebook_content))
+                                    logger.info(f"✅ Added {len(notebooks_found)} notebooks to documentation")
+                            
+                            # Convert to markdown
+                            output_file = os.path.join(output_path, f"{args.library_name}.md")
+                            markdown_to_text(temp_txt, output_file)
+                            # Clean up temp file
+                            try:
+                                os.remove(temp_txt)
+                            except Exception:
+                                pass
+                else:
+                    logger.warning("⚠️ Makefile build failed, falling back to standard Sphinx method")
+                    doc_format = 'sphinx'  # Fall back to standard method
+                    success = False
+            else:
+                logger.warning("⚠️ Makefile directory not found, falling back to standard Sphinx method")
+                doc_format = 'sphinx'  # Fall back to standard method
+                success = False
+
+        if doc_format == 'sphinx' and not output_file:
             from contextmaker.converters.markdown_builder import build_markdown, combine_markdown, find_notebooks_in_doc_dirs, convert_notebook, append_notebook_markdown
             sphinx_source = auxiliary.find_sphinx_source(input_path)
             if sphinx_source:
@@ -183,23 +282,28 @@ def main():
                 success = True
             else:
                 success = False
-        else:
+        elif not output_file:
             success = nonsphinx_converter.create_final_markdown(input_path, output_path, args.library_name)
             output_file = os.path.join(output_path, f"{args.library_name}.md")
         
         if success and output_file:
             logger.info(f" ✅ Conversion completed successfully. Output: {output_file}")
             if extension == 'txt':
-                txt_file = os.path.splitext(output_file)[0] + ".txt"
-                markdown_to_text(output_file, txt_file)
-                # Delete the markdown file after successful text conversion
-                if os.path.exists(txt_file):
-                    try:
-                        os.remove(output_file)
-                        logger.info(f"Deleted markdown file after text conversion: {output_file}")
-                    except Exception as e:
-                        logger.warning(f"Could not delete markdown file: {output_file}. Error: {e}")
-                final_output = txt_file
+                # Check if the output file is already a text file (from Makefile)
+                if output_file.endswith('.txt'):
+                    final_output = output_file
+                else:
+                    # Convert markdown to text
+                    txt_file = os.path.splitext(output_file)[0] + ".txt"
+                    markdown_to_text(output_file, txt_file)
+                    # Delete the markdown file after successful text conversion
+                    if os.path.exists(txt_file):
+                        try:
+                            os.remove(output_file)
+                            logger.info(f"Deleted markdown file after text conversion: {output_file}")
+                        except Exception as e:
+                            logger.warning(f"Could not delete markdown file: {output_file}. Error: {e}")
+                    final_output = txt_file
             else:
                 final_output = output_file
             
@@ -281,7 +385,106 @@ def make(library_name, output_path=None, input_path=None, extension='txt'):
 
         output_file = None
 
-        if doc_format == 'sphinx':
+        if doc_format == 'sphinx_makefile':
+            # Highest priority: Use Sphinx Makefile
+            from contextmaker.converters.markdown_builder import build_via_makefile, combine_text_files, find_notebooks_in_doc_dirs, convert_notebook
+            makefile_dir = auxiliary.find_sphinx_makefile(input_path)
+            if makefile_dir:
+                logger.info(f"📋 Using Sphinx Makefile from: {makefile_dir}")
+                
+                # Build documentation via Makefile
+                build_dir = build_via_makefile(makefile_dir, input_path, 'text')
+                if build_dir:
+                    # Create output file path
+                    if extension == 'txt':
+                        output_file = os.path.join(output_path, f"{library_name}.txt")
+                        # Combine text files directly
+                        success = combine_text_files(build_dir, output_file, library_name)
+                        
+                        # Add notebooks to the text file if any are found
+                        if success:
+                            notebooks_found = find_notebooks_in_doc_dirs(input_path)
+                            if notebooks_found:
+                                logger.info(f"📒 Found {len(notebooks_found)} notebooks, appending to documentation...")
+                                # Read the current content
+                                with open(output_file, 'r', encoding='utf-8') as f:
+                                    current_content = f.read()
+                                
+                                # Append notebooks
+                                notebook_content = []
+                                for nb_path in notebooks_found:
+                                    notebook_md = convert_notebook(nb_path)
+                                    if notebook_md:
+                                        notebook_content.append(f"\n## Notebook: {os.path.basename(nb_path)}\n")
+                                        # Read the content of the markdown file, not just the path
+                                        try:
+                                            with open(notebook_md, 'r', encoding='utf-8') as f:
+                                                notebook_md_content = f.read()
+                                            notebook_content.append(notebook_md_content)
+                                        except Exception as e:
+                                            logger.warning(f"⚠️ Could not read notebook markdown {notebook_md}: {e}")
+                                            notebook_content.append(f"[Notebook content could not be read: {notebook_md}]")
+                                        notebook_content.append("\n" + "-" * 50 + "\n")
+                                
+                                if notebook_content:
+                                    # Write back with notebooks
+                                    with open(output_file, 'w', encoding='utf-8') as f:
+                                        f.write(current_content + ''.join(notebook_content))
+                                    logger.info(f"✅ Added {len(notebooks_found)} notebooks to documentation")
+                    else:
+                        # For markdown output, we'll need to convert text to markdown
+                        temp_txt = os.path.join(output_path, f"{library_name}_temp.txt")
+                        success = combine_text_files(build_dir, temp_txt, library_name)
+                        
+                        # Add notebooks to the temp text file if any are found
+                        if success:
+                            notebooks_found = find_notebooks_in_doc_dirs(input_path)
+                            if notebooks_found:
+                                logger.info(f"📒 Found {len(notebooks_found)} notebooks, appending to documentation...")
+                                # Read the current content
+                                with open(temp_txt, 'r', encoding='utf-8') as f:
+                                    current_content = f.read()
+                                
+                                # Append notebooks
+                                notebook_content = []
+                                for nb_path in notebooks_found:
+                                    notebook_md = convert_notebook(nb_path)
+                                    if notebook_md:
+                                        notebook_content.append(f"\n## Notebook: {os.path.basename(nb_path)}\n")
+                                        # Read the content of the markdown file, not just the path
+                                        try:
+                                            with open(notebook_md, 'r', encoding='utf-8') as f:
+                                                notebook_md_content = f.read()
+                                            notebook_content.append(notebook_md_content)
+                                        except Exception as e:
+                                            logger.warning(f"⚠️ Could not read notebook markdown {notebook_md}: {e}")
+                                            notebook_content.append(f"[Notebook content could not be read: {notebook_md}]")
+                                        notebook_content.append("\n" + "-" * 50 + "\n")
+                                
+                                if notebook_content:
+                                    # Write back with notebooks
+                                    with open(temp_txt, 'w', encoding='utf-8') as f:
+                                        f.write(current_content + ''.join(notebook_content))
+                                    logger.info(f"✅ Added {len(notebooks_found)} notebooks to documentation")
+                            
+                            # Convert to markdown
+                            output_file = os.path.join(output_path, f"{library_name}.md")
+                            markdown_to_text(temp_txt, output_file)
+                            # Clean up temp file
+                            try:
+                                os.remove(temp_txt)
+                            except Exception:
+                                pass
+                else:
+                    logger.warning("⚠️ Makefile build failed, falling back to standard Sphinx method")
+                    doc_format = 'sphinx'  # Fall back to standard method
+                    success = False
+            else:
+                logger.warning("⚠️ Makefile directory not found, falling back to standard Sphinx method")
+                doc_format = 'sphinx'  # Fall back to standard method
+                success = False
+
+        if doc_format == 'sphinx' and not output_file:
             from contextmaker.converters.markdown_builder import build_markdown, combine_markdown, find_notebooks_in_doc_dirs, convert_notebook, append_notebook_markdown
             sphinx_source = auxiliary.find_sphinx_source(input_path)
             if sphinx_source:
@@ -304,23 +507,28 @@ def make(library_name, output_path=None, input_path=None, extension='txt'):
                 success = True
             else:
                 success = False
-        else:
+        elif not output_file:
             success = nonsphinx_converter.create_final_markdown(input_path, output_path, library_name)
             output_file = os.path.join(output_path, f"{library_name}.md")
 
         if success and output_file:
             logger.info(f" ✅ Conversion completed successfully. Output: {output_file}")
             if extension == 'txt':
-                txt_file = os.path.splitext(output_file)[0] + ".txt"
-                markdown_to_text(output_file, txt_file)
-                # Delete the markdown file after successful text conversion
-                if os.path.exists(txt_file):
-                    try:
-                        os.remove(output_file)
-                        logger.info(f"Deleted markdown file after text conversion: {output_file}")
-                    except Exception as e:
-                        logger.warning(f"Could not delete markdown file: {output_file}. Error: {e}")
-                final_output = txt_file
+                # Check if the output file is already a text file (from Makefile)
+                if output_file.endswith('.txt'):
+                    final_output = output_file
+                else:
+                    # Convert markdown to text
+                    txt_file = os.path.splitext(output_file)[0] + ".txt"
+                    markdown_to_text(output_file, txt_file)
+                    # Delete the markdown file after successful text conversion
+                    if os.path.exists(txt_file):
+                        try:
+                            os.remove(output_file)
+                            logger.info(f"Deleted markdown file after text conversion: {output_file}")
+                        except Exception as e:
+                            logger.warning(f"Could not delete markdown file: {output_file}. Error: {e}")
+                    final_output = txt_file
             else:
                 final_output = output_file
             

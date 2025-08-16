@@ -23,6 +23,169 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def build_via_makefile(makefile_dir: str, source_root: str, output_format: str = 'text') -> str | None:
+    """
+    Build Sphinx documentation using the Makefile found in makefile_dir.
+    
+    Args:
+        makefile_dir (str): Directory containing the Makefile
+        source_root (str): Path to the source code root
+        output_format (str): Desired output format ('text' or 'html')
+        
+    Returns:
+        str | None: Path to the build directory if successful, None otherwise
+    """
+    try:
+        # Change to the makefile directory
+        original_cwd = os.getcwd()
+        os.chdir(makefile_dir)
+        
+        logger.info(f"📋 Building documentation via Makefile in: {makefile_dir}")
+        
+        # First, try to add a 'text' target to the Makefile if it doesn't exist
+        makefile_path = os.path.join(makefile_dir, "Makefile")
+        if os.path.exists(makefile_path):
+            with open(makefile_path, 'r', encoding='utf-8') as f:
+                makefile_content = f.read()
+            
+            # Check if 'text' target already exists
+            if 'text:' not in makefile_content:
+                logger.info("📋 Adding 'text' target to Makefile for text output")
+                
+                # Find the end of the Makefile and add the text target
+                lines = makefile_content.split('\n')
+                text_target_added = False
+                
+                for i, line in enumerate(lines):
+                    if line.strip().startswith('help:') or line.strip().startswith('.PHONY:'):
+                        # Add text target before help or .PHONY
+                        text_target = [
+                            '',
+                            '# Text output target added by contextmaker',
+                            'text:',
+                            '\t$(SPHINXBUILD) -b text $(SPHINXOPTS) "$(SOURCEDIR)" "$(BUILDDIR)/text"',
+                            '\t@echo',
+                            '\t@echo "Build finished. The text files are in $(BUILDDIR)/text."',
+                            ''
+                        ]
+                        lines[i:i] = text_target
+                        text_target_added = True
+                        break
+                
+                if not text_target_added:
+                    # Add at the end if no help or .PHONY found
+                    text_target = [
+                        '',
+                        '# Text output target added by contextmaker',
+                        'text:',
+                        '\t$(SPHINXBUILD) -b text $(ALLSPHINXOPTS) $(BUILDDIR)/text',
+                        '\t@echo',
+                        '\t@echo "Build finished. The text files are in $(BUILDDIR)/text."',
+                        ''
+                    ]
+                    lines.extend(text_target)
+                
+                # Write the modified Makefile
+                with open(makefile_path, 'w', encoding='utf-8') as f:
+                    f.write('\n'.join(lines))
+                
+                logger.info("✅ Added 'text' target to Makefile")
+        
+        # Try to build the documentation
+        build_target = 'text' if output_format == 'text' else 'html'
+        
+        # First, try to clean any previous builds
+        try:
+            logger.info("🧹 Cleaning previous builds...")
+            subprocess.run(["make", "clean"], capture_output=True, text=True, check=False)
+        except Exception as e:
+            logger.debug(f"Clean command failed (this is normal): {e}")
+        
+        # Build the documentation
+        logger.info(f"🔨 Building documentation with target: {build_target}")
+        result = subprocess.run(
+            ["make", build_target],
+            capture_output=True,
+            text=True,
+            env={**os.environ, "PYTHONPATH": source_root + os.pathsep + os.environ.get("PYTHONPATH", "")}
+        )
+        
+        if result.returncode == 0:
+            logger.info("✅ Makefile build successful")
+            
+            # Find the build directory
+            build_dir = None
+            if output_format == 'text':
+                # Look for text output directory
+                possible_text_dirs = [
+                    os.path.join(makefile_dir, "_build", "text"),
+                    os.path.join(makefile_dir, "build", "text"),
+                    os.path.join(makefile_dir, "text")
+                ]
+                for dir_path in possible_text_dirs:
+                    if os.path.exists(dir_path):
+                        build_dir = dir_path
+                        break
+                
+                # If still not found, check if _build directory exists and look for text subdirectory
+                if not build_dir:
+                    # Since we changed to makefile_dir, _build is now relative to current directory
+                    build_base = "_build"
+                    logger.debug(f"🔍 Checking build base: {build_base}")
+                    if os.path.exists(build_base):
+                        logger.debug(f"📁 Build base exists, checking contents...")
+                        logger.debug(f"📁 Contents of build_base: {os.listdir(build_base)}")
+                        for item in os.listdir(build_base):
+                            item_path = os.path.join(build_base, item)
+                            logger.debug(f"🔍 Checking item: {item_path}")
+                            if os.path.isdir(item_path):
+                                logger.debug(f"📁 Item is directory, checking for .txt files...")
+                                try:
+                                    txt_files = [f for f in os.listdir(item_path) if f.endswith('.txt') and os.path.isfile(os.path.join(item_path, f))]
+                                    logger.debug(f"📝 Found .txt files: {txt_files}")
+                                    if txt_files:
+                                        build_dir = os.path.join(makefile_dir, item_path)
+                                        logger.info(f"✅ Found build directory with .txt files: {build_dir}")
+                                        break
+                                except Exception as e:
+                                    logger.debug(f"❌ Error checking item {item_path}: {e}")
+                    else:
+                        logger.debug(f"❌ Build base does not exist: {build_base}")
+            else:
+                # Look for HTML output directory
+                possible_html_dirs = [
+                    os.path.join(makefile_dir, "_build", "html"),
+                    os.path.join(makefile_dir, "build", "html"),
+                    os.path.join(makefile_dir, "html")
+                ]
+                for dir_path in possible_html_dirs:
+                    if os.path.exists(dir_path):
+                        build_dir = dir_path
+                        break
+            
+            if build_dir:
+                logger.info(f"📁 Build output found at: {build_dir}")
+                return build_dir
+            else:
+                logger.warning("⚠️ Build succeeded but output directory not found")
+                return None
+        else:
+            logger.error(f"❌ Makefile build failed with return code {result.returncode}")
+            logger.error(f"stdout:\n{result.stdout}")
+            logger.error(f"stderr:\n{result.stderr}")
+            return None
+            
+    except Exception as e:
+        logger.error(f"❌ Error during Makefile build: {e}")
+        return None
+    finally:
+        # Restore original working directory
+        try:
+            os.chdir(original_cwd)
+        except Exception:
+            pass
+
+
 def create_safe_conf_py(original_conf_path):
     """
     Create a safe version of conf.py by removing problematic sys.exit() calls.
@@ -606,6 +769,70 @@ def build_html_and_convert_to_text(sphinx_source, conf_path, source_root, output
             out.write("\n\n---\n\n")
     logger.info(f" 📄 Combined HTML-to-text written to {output}")
     return True
+
+
+def combine_text_files(build_dir: str, output_file: str, library_name: str) -> bool:
+    """
+    Combine all text files from the Makefile build into a single output file.
+    
+    Args:
+        build_dir (str): Directory containing the built text files
+        output_file (str): Path to the output file
+        library_name (str): Name of the library for the title
+        
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    try:
+        logger.info(f"📝 Combining text files from: {build_dir}")
+        
+        # Find all .txt files in the build directory
+        text_files = []
+        for root, dirs, files in os.walk(build_dir):
+            for file in files:
+                if file.endswith('.txt'):
+                    text_files.append(os.path.join(root, file))
+        
+        if not text_files:
+            logger.warning("⚠️ No text files found in build directory")
+            return False
+        
+        logger.info(f"📝 Found {len(text_files)} text files to combine")
+        
+        # Sort files to ensure consistent ordering
+        text_files.sort()
+        
+        # Combine all text files
+        combined_content = []
+        combined_content.append(f"# {library_name.upper()} Documentation\n")
+        combined_content.append("Generated via Sphinx Makefile\n")
+        combined_content.append("=" * 50 + "\n\n")
+        
+        for text_file in text_files:
+            try:
+                with open(text_file, 'r', encoding='utf-8') as f:
+                    content = f.read().strip()
+                
+                if content:
+                    # Add file header
+                    rel_path = os.path.relpath(text_file, build_dir)
+                    combined_content.append(f"## {rel_path}\n")
+                    combined_content.append(content)
+                    combined_content.append("\n\n" + "-" * 30 + "\n\n")
+            except Exception as e:
+                logger.warning(f"⚠️ Could not read text file {text_file}: {e}")
+                continue
+        
+        # Write combined content
+        with open(output_file, 'w', encoding='utf-8') as f:
+            f.write(''.join(combined_content))
+        
+        logger.info(f"✅ Combined text files into: {output_file}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"❌ Error combining text files: {e}")
+        return False
 
 
 def main():
