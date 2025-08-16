@@ -93,10 +93,23 @@ def has_notebook(lib_path: str) -> bool:
     if has_documentation(lib_path):
         return False
 
+    # First check the traditional notebooks/ directory
     notebook_dir = os.path.join(lib_path, 'notebooks')
     if os.path.exists(notebook_dir):
         notebooks = glob.glob(os.path.join(notebook_dir, '*.ipynb'))
-        return len(notebooks) > 0
+        if len(notebooks) > 0:
+            return True
+    
+    # If no notebooks in notebooks/, do a quick recursive search
+    # Use a more efficient approach than full recursive search
+    for root, dirs, files in os.walk(lib_path):
+        # Skip common non-relevant directories for performance
+        dirs[:] = [d for d in dirs if d not in ['.git', '__pycache__', 'build', 'dist', '.pytest_cache', 'node_modules']]
+        
+        for file in files:
+            if file.endswith('.ipynb'):
+                return True
+    
     return False
 
 

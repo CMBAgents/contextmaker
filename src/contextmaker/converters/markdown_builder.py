@@ -62,12 +62,13 @@ def create_safe_conf_py(original_conf_path):
         return original_conf_path
 
 
-def create_minimal_conf_py(sphinx_source, source_root):
+def create_minimal_conf_py(sphinx_source, source_root, notebooks_found=None):
     """
     Create a minimal working conf.py when the original one is problematic.
     Args:
         sphinx_source (str): Path to the Sphinx source directory
         source_root (str): Path to the source code root
+        notebooks_found (list, optional): List of notebook paths found
     Returns:
         str: Path to the minimal conf.py file
     """
@@ -80,6 +81,15 @@ def create_minimal_conf_py(sphinx_source, source_root):
         autodoc_mock_imports.add(modname.split('.')[0])
     temp_dir = tempfile.mkdtemp(prefix="minimal_conf_")
     minimal_conf_path = os.path.join(temp_dir, "conf.py")
+    # Add notebook support if notebooks were found
+    notebook_extensions = []
+    if notebooks_found:
+        notebook_extensions = [
+            'nbsphinx',  # For Jupyter notebook support
+            'sphinx.ext.mathjax',  # For math in notebooks
+        ]
+        logger.info(f"📒 Adding notebook support extensions: {notebook_extensions}")
+    
     minimal_conf_content = f'''# Minimal Sphinx configuration created by contextmaker
 import os
 import sys
@@ -94,6 +104,7 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.viewcode',
     'sphinx.ext.intersphinx',
+    {', '.join(f"'{ext}'" for ext in notebook_extensions)}
 ]
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
@@ -102,6 +113,10 @@ autodoc_mock_imports = {sorted(list(autodoc_mock_imports))}
 intersphinx_mapping = {{
     'python': ('https://docs.python.org/3/', None),
 }}
+
+# Notebook configuration
+nbsphinx_execute = 'never'  # Don't execute notebooks during build
+nbsphinx_allow_errors = True  # Continue build even if notebooks have errors
 '''
     with open(minimal_conf_path, 'w', encoding='utf-8') as f:
         f.write(minimal_conf_content)
@@ -169,9 +184,14 @@ def build_markdown(sphinx_source, conf_path, source_root, robust=False):
     build_dir = tempfile.mkdtemp(prefix="sphinx_build_")
     logger.info(f"Build directory: {build_dir}")
     os.makedirs(build_dir, exist_ok=True)
+    
+    # Find notebooks early to include them in minimal config if needed
+    notebooks_found = find_notebooks_in_doc_dirs(source_root)
+    if notebooks_found:
+        logger.info(f"📒 Found {len(notebooks_found)} notebooks that will be included in documentation")
     if robust:
         # Always use minimal conf.py
-        minimal_conf_path = create_minimal_conf_py(patched_sphinx_source, patched_source_root)
+        minimal_conf_path = create_minimal_conf_py(patched_sphinx_source, patched_source_root, notebooks_found)
         conf_dir = os.path.dirname(minimal_conf_path)
         logger.info(f" 📄 Forcing minimal conf.py for robust mode: {minimal_conf_path}")
         logger.info(f"Using minimal conf.py for robust mode: {minimal_conf_path}")
@@ -210,7 +230,7 @@ def build_markdown(sphinx_source, conf_path, source_root, robust=False):
             logger.error(" 📄 stdout:\n%s", result.stdout)
             logger.error(" 📄 stderr:\n%s", result.stderr)
             # Try with minimal conf.py
-            minimal_conf_path = create_minimal_conf_py(patched_sphinx_source, patched_source_root)
+            minimal_conf_path = create_minimal_conf_py(patched_sphinx_source, patched_source_root, notebooks_found)
             conf_dir = os.path.dirname(minimal_conf_path)
             result = subprocess.run(
                 ["sphinx-build", "-b", "markdown", "-c", conf_dir, patched_sphinx_source, build_dir],
@@ -220,6 +240,15 @@ def build_markdown(sphinx_source, conf_path, source_root, robust=False):
             )
             if result.returncode == 0:
                 logger.info("sphinx-build succeeded with minimal config.")
+                
+                # Check if any markdown files were produced
+                import glob
+                md_files = glob.glob(os.path.join(build_dir, "*.md"))
+                if md_files:
+                    logger.info(f"✅ Minimal config produced {len(md_files)} markdown files")
+                else:
+                    logger.warning("⚠️ Minimal config succeeded but produced no markdown files")
+                
                 try:
                     temp_dir = os.path.dirname(minimal_conf_path)
                     shutil.rmtree(temp_dir)
@@ -339,18 +368,100 @@ def combine_markdown(build_dir, exclude, output, index_path, library_name):
     logger.info(f"Combined markdown written to {output}")
 
 
-def find_notebooks_in_doc_dirs(library_root):
+def find_all_notebooks_recursive(library_root, exclude_patterns=None):
     """
-    Find all .ipynb files in 'docs/', 'doc/', and 'docs/source/' directories inside the given library root, sorted alphabetically.
-    Returns a list of absolute paths.
+    Find ALL .ipynb files recursively in the entire library, with intelligent exclusions.
+    
+    Args:
+        library_root (str): Path to the library root
+        exclude_patterns (list, optional): Additional patterns to exclude (e.g., ['*test*', '*temp*'])
+    
+    Returns:
+        list: List of absolute paths to all notebooks found, sorted alphabetically
     """
+    if exclude_patterns is None:
+        exclude_patterns = []
+    
+    # Standard exclusions for performance and relevance
+    standard_exclusions = {
+        '.git', '__pycache__', 'build', 'dist', '.pytest_cache', 
+        'node_modules', '.ipynb_checkpoints', '.jupyter', '.cache',
+        'venv', 'env', '.venv', '.env', 'conda-meta',
+        '_build', '.sphinx', '.tox', '.coverage', 'htmlcov'
+    }
+    
+    # Add user exclusions
+    all_exclusions = standard_exclusions.union(set(exclude_patterns))
+    
+    candidates = []
+    total_dirs_scanned = 0
+    total_files_scanned = 0
+    
+    logger.info(f"🔍 Starting recursive notebook search in: {library_root}")
+    logger.info(f"🚫 Excluding patterns: {sorted(all_exclusions)}")
+    
+    for root, dirs, files in os.walk(library_root):
+        total_dirs_scanned += 1
+        
+        # Filter out excluded directories (modify dirs in-place for os.walk)
+        dirs[:] = [d for d in dirs if d not in all_exclusions]
+        
+        # Check for notebooks in current directory
+        for file in files:
+            total_files_scanned += 1
+            if file.endswith('.ipynb'):
+                full_path = os.path.join(root, file)
+                relative_path = os.path.relpath(full_path, library_root)
+                candidates.append((full_path, relative_path))
+                logger.debug(f"📒 Found notebook: {relative_path}")
+    
+    # Sort by relative path for consistent ordering
+    candidates.sort(key=lambda x: x[1])
+    
+    # Convert to absolute paths
+    abs_candidates = [os.path.abspath(path) for path, _ in candidates]
+    
+    # Log summary
+    logger.info(f"🔍 Search completed:")
+    logger.info(f"   📁 Directories scanned: {total_dirs_scanned}")
+    logger.info(f"   📄 Files scanned: {total_files_scanned}")
+    logger.info(f"   📒 Notebooks found: {len(abs_candidates)}")
+    
+    if abs_candidates:
+        logger.info(f"📒 All notebooks found:")
+        for i, (_, rel_path) in enumerate(candidates, 1):
+            logger.info(f"   {i:2d}. {rel_path}")
+    else:
+        logger.info(f"❌ No notebooks found in {library_root}")
+    
+    return abs_candidates
+
+
+def find_notebooks_in_doc_dirs(library_root, recursive=True):
+    """
+    Find notebooks in documentation directories with option for recursive search.
+    
+    Args:
+        library_root (str): Path to the library root
+        recursive (bool): If True, search recursively in all subdirectories
+    
+    Returns:
+        list: List of absolute paths to notebooks found
+    """
+    if recursive:
+        logger.info(f"🔍 Using recursive search for notebooks in {library_root}")
+        return find_all_notebooks_recursive(library_root)
+    
+    # Original behavior for backward compatibility
+    logger.info(f"🔍 Using legacy search in docs/, doc/, docs/source/ for {library_root}")
     candidates = []
     for doc_dir in ["docs", "doc", "docs/source"]:
         abs_doc_dir = os.path.join(library_root, doc_dir)
         if os.path.isdir(abs_doc_dir):
             found = glob.glob(os.path.join(abs_doc_dir, "*.ipynb"))
-            logger.info(f"Notebooks in {abs_doc_dir}: {found}")
+            logger.info(f"Notebooks in {doc_dir}: {found}")
             candidates.extend(found)
+    
     abs_candidates = sorted([os.path.abspath(nb) for nb in candidates])
     if abs_candidates:
         logger.info(f"Notebooks found: {abs_candidates}")
@@ -431,7 +542,9 @@ def build_html_and_convert_to_text(sphinx_source, conf_path, source_root, output
             logger.error(" 📄 Trying with minimal configuration...")
             
             # Try with minimal conf.py
-            minimal_conf_path = create_minimal_conf_py(patched_sphinx_source, patched_source_root)
+            # Find notebooks for minimal config
+            notebooks_in_source = find_notebooks_in_doc_dirs(source_root)
+            minimal_conf_path = create_minimal_conf_py(patched_sphinx_source, patched_source_root, notebooks_in_source)
             conf_dir = os.path.dirname(minimal_conf_path)
             
             result = subprocess.run(

@@ -51,24 +51,42 @@ def create_markdown_files(lib_path, output_path):
     # Track if we found any valid files
     found_files = False
     
-    # Recursively search for files
+    # Import the robust notebook finder
+    try:
+        from contextmaker.converters.markdown_builder import find_all_notebooks_recursive
+        # Use robust recursive search for notebooks
+        all_notebooks = find_all_notebooks_recursive(lib_path)
+        for nb_path in all_notebooks:
+            jupyter_to_markdown(nb_path, temp_output_path)
+            found_files = True
+        logger.info(f"📒 Processed {len(all_notebooks)} notebooks using recursive search")
+    except ImportError:
+        # Fallback to original method if import fails
+        logger.warning("📒 Using fallback notebook search method")
+        for root, dirs, files in os.walk(lib_path):
+            # Skip common directories that don't contain documentation
+            dirs[:] = [d for d in dirs if d not in ['.git', '__pycache__', 'build', 'dist', '.pytest_cache', 'node_modules']]
+            
+            for file in files:
+                if file.endswith(".ipynb"):
+                    full_path = os.path.join(root, file)
+                    jupyter_to_markdown(full_path, temp_output_path)
+                    found_files = True
+    
+    # Process Python files
     for root, dirs, files in os.walk(lib_path):
         # Skip common directories that don't contain documentation
         dirs[:] = [d for d in dirs if d not in ['.git', '__pycache__', 'build', 'dist', '.pytest_cache', 'node_modules']]
         
         for file in files:
-            full_path = os.path.join(root, file)
-            relative_path = os.path.relpath(full_path, lib_path)
-            
-            if file.endswith(".ipynb"):
-                jupyter_to_markdown(full_path, temp_output_path)
-                found_files = True
-            elif file.endswith(".py") and auxiliary.has_docstrings(full_path):
-                docstrings_to_markdown(full_path, temp_output_path)
-                found_files = True
-            elif file.endswith(".py") and auxiliary.has_source(lib_path):
-                source_to_markdown(full_path, temp_output_path)
-                found_files = True
+            if file.endswith(".py"):
+                full_path = os.path.join(root, file)
+                if auxiliary.has_docstrings(full_path):
+                    docstrings_to_markdown(full_path, temp_output_path)
+                    found_files = True
+                elif auxiliary.has_source(lib_path):
+                    source_to_markdown(full_path, temp_output_path)
+                    found_files = True
     
     if not found_files:
         logger.warning("No documentation files found in the library. This may be a library without docstrings or documentation.")
