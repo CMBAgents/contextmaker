@@ -104,8 +104,34 @@ def build_via_makefile(makefile_dir: str, source_root: str, output_format: str =
         logger.error("   - macOS: Install Xcode Command Line Tools (xcode-select --install)")
         logger.error("   - Linux: sudo apt-get install make (Ubuntu/Debian) or sudo yum install make (RHEL/CentOS)")
         logger.error("   - Windows: Install MinGW, Cygwin, or use WSL")
+        
+        # Try to install make using the dependency manager
+        try:
+            from contextmaker.dependency_manager import dependency_manager
+            if dependency_manager.install_system_package("make"):
+                logger.info("✅ Successfully installed 'make', retrying build...")
+                # Retry the build after installing make
+                return build_via_makefile_internal(makefile_dir, source_root, output_format)
+        except Exception as e:
+            logger.error(f"❌ Failed to install 'make': {e}")
+        
         return None
     
+    return build_via_makefile_internal(makefile_dir, source_root, output_format)
+
+
+def build_via_makefile_internal(makefile_dir: str, source_root: str, output_format: str = 'text') -> str | None:
+    """
+    Internal function to build Sphinx documentation using the Makefile.
+    
+    Args:
+        makefile_dir (str): Directory containing the Makefile
+        source_root (str): Path to the source code root
+        output_format (str): Desired output format ('text' or 'html')
+        
+    Returns:
+        str | None: Path to the build directory if successful, None otherwise
+    """
     try:
         # Change to the makefile directory
         original_cwd = os.getcwd()

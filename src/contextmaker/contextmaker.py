@@ -19,6 +19,8 @@ import os
 import sys
 import logging
 from contextmaker.converters import nonsphinx_converter, auxiliary
+from contextmaker.dependency_manager import dependency_manager
+from contextmaker.build_manager import build_manager
 import subprocess
 
 # Set up the logger
@@ -79,39 +81,19 @@ def ensure_library_installed(library_name):
     Returns:
         bool: True if library is available, False otherwise
     """
-    try:
-        __import__(library_name)
-        logger.info(f"✅ Library '{library_name}' is already available.")
-        return True
-    except ImportError:
-        logger.info(f" Library '{library_name}' not found. Attempting to install it via pip...")
-        try:
-            result = subprocess.run([sys.executable, "-m", "pip", "install", library_name], 
-                                  capture_output=True, text=True, timeout=60)
-            if result.returncode == 0:
-                try:
-                    __import__(library_name)
-                    logger.info(f"✅ Library '{library_name}' successfully installed and imported.")
-                    return True
-                except ImportError:
-                    logger.warning(f" Library '{library_name}' was installed but could not be imported. Continuing with documentation processing...")
-                    return False
-            else:
-                logger.warning(f" Pip install failed for '{library_name}': {result.stderr.strip()}")
-                logger.info(f" Continuing with documentation processing - this might be a repository with notebooks/docs only.")
-                return False
-        except subprocess.TimeoutExpired:
-            logger.warning(f" Pip install timed out for '{library_name}'. Continuing with documentation processing...")
-            return False
-        except Exception as e:
-            logger.warning(f" Unexpected error during pip install for '{library_name}': {e}")
-            logger.info(f" Continuing with documentation processing...")
-            return False
+    # Use the enhanced dependency manager
+    from .dependency_manager import dependency_manager
+    return dependency_manager.ensure_library_installed(library_name)
 
 
 def main():
     try:
         args = parse_args()
+        
+        # Set up build environment with dependency management
+        logger.info("🔧 Setting up build environment...")
+        if not build_manager.ensure_build_environment():
+            logger.warning("⚠️ Build environment setup had issues, continuing anyway...")
         
         # Try to ensure target library is installed, but continue even if it fails
         library_available = ensure_library_installed(args.library_name)
@@ -404,6 +386,11 @@ def make(library_name, output_path=None, input_path=None, extension='txt', rough
         str: Path to the generated documentation file, or None if failed.
     """
     try:
+        # Set up build environment with dependency management
+        logger.info("🔧 Setting up build environment...")
+        if not build_manager.ensure_build_environment():
+            logger.warning("⚠️ Build environment setup had issues, continuing anyway...")
+        
         # Try to ensure target library is installed, but continue even if it fails
         library_available = ensure_library_installed(library_name)
         if not library_available:
