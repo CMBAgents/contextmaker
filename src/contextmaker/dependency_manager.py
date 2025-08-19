@@ -6,6 +6,7 @@ This module provides comprehensive dependency management including:
 - System dependencies (Homebrew, apt, yum)
 - Build tools installation
 - Development mode installation
+- Portable tools installation
 """
 
 import os
@@ -14,6 +15,11 @@ import platform
 import subprocess
 import logging
 import shutil
+import tempfile
+import urllib.request
+import ssl
+import zipfile
+import tarfile
 from typing import List, Dict, Optional, Tuple
 from contextlib import contextmanager
 
@@ -29,6 +35,11 @@ class DependencyManager:
     def __init__(self):
         self.system = platform.system().lower()
         self.python_executable = sys.executable
+        self.portable_tools_dir = os.path.join(os.path.expanduser("~"), ".contextmaker", "portable_tools")
+        
+        # Ensure portable tools directory exists
+        os.makedirs(self.portable_tools_dir, exist_ok=True)
+        
         self.required_python_packages = [
             "sphinx>=5.0.0",
             "jupytext>=1.14.0", 
@@ -49,6 +60,71 @@ class DependencyManager:
             "jupyter"
         ]
         
+        # Define portable tools with download URLs
+        self.portable_tools = {
+            'pandoc': {
+                'darwin': {
+                    'url': 'https://github.com/jgm/pandoc/releases/download/3.4/pandoc-3.4-arm64-macOS.zip',
+                    'filename': 'pandoc-3.4-arm64-macOS.zip',
+                    'extract_command': 'unzip',
+                    'binary_name': 'pandoc'
+                },
+                'linux': {
+                    'url': 'https://github.com/jgm/pandoc/releases/download/3.4/pandoc-3.4-linux-amd64.tar.gz',
+                    'filename': 'pandoc-3.4-linux-amd64.tar.gz',
+                    'extract_command': 'tar -xzf',
+                    'binary_name': 'pandoc'
+                },
+                'windows': {
+                    'url': 'https://github.com/jgm/pandoc/releases/download/3.4/pandoc-3.4-windows-x86_64.zip',
+                    'filename': 'pandoc-3.4-windows-x86_64.zip',
+                    'extract_command': 'unzip',
+                    'binary_name': 'pandoc.exe'
+                }
+            },
+            'cmake': {
+                'darwin': {
+                    'url': 'https://github.com/Kitware/CMake/releases/download/v3.28.1/cmake-3.28.1-macos-universal.tar.gz',
+                    'filename': 'cmake-3.28.1-macos-universal.tar.gz',
+                    'extract_command': 'tar -xzf',
+                    'binary_name': 'cmake'
+                },
+                'linux': {
+                    'url': 'https://github.com/Kitware/CMake/releases/download/v3.28.1/cmake-3.28.1-linux-x86_64.tar.gz',
+                    'filename': 'cmake-3.28.1-linux-x86_64.tar.gz',
+                    'extract_command': 'tar -xzf',
+                    'binary_name': 'cmake'
+                },
+                'windows': {
+                    'url': 'https://github.com/Kitware/CMake/releases/download/v3.28.1/cmake-3.28.1-windows-x86_64.zip',
+                    'filename': 'cmake-3.28.1-windows-x86_64.zip',
+                    'extract_command': 'unzip',
+                    'binary_name': 'cmake.exe'
+                }
+            },
+            'make': {
+                'darwin': {
+                    'url': None,  # Use system make on macOS
+                    'filename': None,
+                    'extract_command': None,
+                    'binary_name': 'make'
+                },
+                'linux': {
+                    'url': None,  # Use system make on Linux
+                    'filename': None,
+                    'extract_command': None,
+                    'binary_name': 'make'
+                },
+                'windows': {
+                    'url': None,  # Use system make on Windows if available
+                    'filename': None,
+                    'extract_command': None,
+                    'binary_name': 'make.exe'
+                }
+            }
+        }
+        
+        # Legacy system dependencies (kept for fallback)
         self.system_dependencies = {
             'darwin': {  # macOS
                 'build_tools': ['pkg-config', 'autoconf', 'automake', 'libtool', 'cmake'],
@@ -76,6 +152,285 @@ class DependencyManager:
             return "pacman"
         else:
             return "unknown"
+    
+    def download_file(self, url: str, filename: str) -> str:
+        """
+        Download a file from URL to the portable tools directory.
+        
+        Args:
+            url (str): URL to download from
+            filename (str): Name of the file to save
+            
+        Returns:
+            str: Path to the downloaded file
+        """
+        file_path = os.path.join(self.portable_tools_dir, filename)
+        
+        if os.path.exists(file_path):
+            logger.info(f"📁 File already exists: {file_path}")
+            return file_path
+        
+        logger.info(f"⬇️ Downloading {filename} from {url}")
+        
+        try:
+            # Create a context that ignores SSL certificate verification
+            ssl_context = ssl.create_default_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+            
+            # Use urllib with SSL context
+            with urllib.request.urlopen(url, context=ssl_context) as response:
+                with open(file_path, 'wb') as f:
+                    f.write(response.read())
+            
+            logger.info(f"✅ Downloaded: {file_path}")
+            return file_path
+        except Exception as e:
+            logger.error(f"❌ Failed to download {filename}: {e}")
+            return None
+    
+    def extract_portable_tool(self, tool_name: str, archive_path: str, extract_command: str = None) -> str:
+        """
+        Extract a portable tool from archive.
+        
+        Args:
+            tool_name (str): Name of the tool
+            archive_path (str): Path to the archive file
+            extract_command (str): Command to extract the archive
+            
+        Returns:
+            str: Path to the extracted binary, or None if failed
+        """
+        tool_dir = os.path.join(self.portable_tools_dir, tool_name)
+        os.makedirs(tool_dir, exist_ok=True)
+        
+        try:
+            if extract_command:
+                # Use system command to extract
+                if extract_command.startswith('tar'):
+                    subprocess.run(f"cd {tool_dir} && {extract_command} {archive_path}", 
+                                 shell=True, check=True)
+                elif extract_command == 'unzip':
+                    subprocess.run(f"cd {tool_dir} && unzip {archive_path}", 
+                                 shell=True, check=True)
+            else:
+                # Use Python to extract
+                if archive_path.endswith('.tar.gz'):
+                    with tarfile.open(archive_path, 'r:gz') as tar:
+                        tar.extractall(tool_dir)
+                elif archive_path.endswith('.zip'):
+                    with zipfile.ZipFile(archive_path, 'r') as zip_ref:
+                        zip_ref.extractall(tool_dir)
+                elif archive_path.endswith('.pkg'):
+                    # For macOS packages, we need to handle them differently
+                    logger.info(f"📦 macOS package detected for {tool_name}, manual installation may be required")
+                    return None
+            
+            # Find the binary in the extracted directory
+            binary_name = self.portable_tools[tool_name][self.system]['binary_name']
+            
+            # Special handling for different archive structures
+            if tool_name == 'pandoc':
+                # Pandoc archives typically have a subdirectory with the version
+                for root, dirs, files in os.walk(tool_dir):
+                    if binary_name in files:
+                        binary_path = os.path.join(root, binary_name)
+                        # Make executable on Unix systems
+                        if self.system != 'windows':
+                            os.chmod(binary_path, 0o755)
+                        logger.info(f"✅ Extracted {tool_name}: {binary_path}")
+                        return binary_path
+            else:
+                # Standard extraction for other tools
+                for root, dirs, files in os.walk(tool_dir):
+                    if binary_name in files:
+                        binary_path = os.path.join(root, binary_name)
+                        # Make executable on Unix systems
+                        if self.system != 'windows':
+                            os.chmod(binary_path, 0o755)
+                        logger.info(f"✅ Extracted {tool_name}: {binary_path}")
+                        return binary_path
+            
+            logger.error(f"❌ Could not find {binary_name} in extracted files")
+            return None
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to extract {tool_name}: {e}")
+            return None
+    
+    def install_portable_tool(self, tool_name: str) -> bool:
+        """
+        Install a portable tool.
+        
+        Args:
+            tool_name (str): Name of the tool to install
+            
+        Returns:
+            bool: True if installation successful, False otherwise
+        """
+        if tool_name not in self.portable_tools:
+            logger.error(f"❌ Unknown portable tool: {tool_name}")
+            return False
+        
+        if self.system not in self.portable_tools[tool_name]:
+            logger.error(f"❌ Tool {tool_name} not available for {self.system}")
+            return False
+        
+        tool_info = self.portable_tools[tool_name][self.system]
+        
+        # Check if already installed
+        binary_path = self.get_portable_tool_path(tool_name)
+        if binary_path and os.path.exists(binary_path):
+            logger.info(f"✅ {tool_name} already installed: {binary_path}")
+            return True
+        
+        # For tools that use system binaries (like make on Unix)
+        if tool_info['url'] is None:
+            if shutil.which(tool_info['binary_name']):
+                logger.info(f"✅ {tool_name} available from system: {shutil.which(tool_info['binary_name'])}")
+                return True
+            else:
+                logger.error(f"❌ {tool_name} not available from system and no portable version provided")
+                return False
+        
+
+        
+        # Download and extract
+        archive_path = self.download_file(tool_info['url'], tool_info['filename'])
+        if not archive_path:
+            return False
+        
+        binary_path = self.extract_portable_tool(tool_name, archive_path, tool_info['extract_command'])
+        if not binary_path:
+            return False
+        
+        # Clean up archive
+        try:
+            os.remove(archive_path)
+        except:
+            pass
+        
+        return True
+    
+    def get_portable_tool_path(self, tool_name: str) -> Optional[str]:
+        """
+        Get the path to a portable tool binary.
+        
+        Args:
+            tool_name (str): Name of the tool
+            
+        Returns:
+            Optional[str]: Path to the binary, or None if not found
+        """
+        if tool_name not in self.portable_tools:
+            return None
+        
+        if self.system not in self.portable_tools[tool_name]:
+            return None
+        
+        tool_info = self.portable_tools[tool_name][self.system]
+        binary_name = tool_info['binary_name']
+        
+        # Check portable tools directory
+        tool_dir = os.path.join(self.portable_tools_dir, tool_name)
+        if os.path.exists(tool_dir):
+            for root, dirs, files in os.walk(tool_dir):
+                if binary_name in files:
+                    return os.path.join(root, binary_name)
+        
+        # Check system PATH
+        system_path = shutil.which(binary_name)
+        if system_path:
+            return system_path
+        
+        return None
+    
+    def install_portable_tools(self, tools: List[str] = None) -> bool:
+        """
+        Install portable tools.
+        
+        Args:
+            tools (List[str]): List of tools to install. If None, installs all available tools.
+            
+        Returns:
+            bool: True if all tools installed successfully, False otherwise
+        """
+        if tools is None:
+            tools = list(self.portable_tools.keys())
+        
+        logger.info(f"🔧 Installing portable tools: {tools}")
+        
+        success_count = 0
+        for tool in tools:
+            if self.install_portable_tool(tool):
+                success_count += 1
+            else:
+                logger.warning(f"⚠️ Failed to install portable tool: {tool}")
+        
+        if success_count == len(tools):
+            logger.info(f"✅ All {len(tools)} portable tools installed successfully")
+            return True
+        else:
+            logger.warning(f"⚠️ Only {success_count}/{len(tools)} portable tools installed")
+            return False
+    
+    def install_pandoc_macos(self) -> bool:
+        """
+        Install Pandoc on macOS using Homebrew as fallback.
+        
+        Returns:
+            bool: True if installation successful, False otherwise
+        """
+        logger.info("🍺 Trying to install Pandoc via Homebrew...")
+        
+        try:
+            # Check if Homebrew is available
+            if not shutil.which('brew'):
+                logger.error("❌ Homebrew not found. Please install Homebrew first: https://brew.sh")
+                return False
+            
+            # Install Pandoc via Homebrew
+            result = subprocess.run(['brew', 'install', 'pandoc'], 
+                                  capture_output=True, text=True, timeout=300)
+            
+            if result.returncode == 0:
+                logger.info("✅ Pandoc installed successfully via Homebrew")
+                return True
+            else:
+                logger.error(f"❌ Failed to install Pandoc via Homebrew: {result.stderr}")
+                return False
+                
+        except subprocess.TimeoutExpired:
+            logger.error("⏰ Timeout installing Pandoc via Homebrew")
+            return False
+        except Exception as e:
+            logger.error(f"❌ Error installing Pandoc via Homebrew: {e}")
+            return False
+    
+    def cleanup_portable_tools(self):
+        """
+        Clean up portable tools directory and downloaded files.
+        """
+        try:
+            if os.path.exists(self.portable_tools_dir):
+                import shutil
+                shutil.rmtree(self.portable_tools_dir)
+                logger.info(f"🧹 Cleaned up portable tools directory: {self.portable_tools_dir}")
+        except Exception as e:
+            logger.error(f"❌ Failed to cleanup portable tools: {e}")
+    
+    def list_installed_portable_tools(self) -> List[str]:
+        """
+        List all installed portable tools.
+        
+        Returns:
+            List[str]: List of installed tool names
+        """
+        installed_tools = []
+        for tool_name in self.portable_tools.keys():
+            if self.check_portable_tool_available(tool_name):
+                installed_tools.append(tool_name)
+        return installed_tools
     
     def check_python_package(self, package_name: str) -> bool:
         """
@@ -178,6 +533,45 @@ class DependencyManager:
         """
         return shutil.which(package_name) is not None
     
+    def get_tool_command(self, tool_name: str) -> Optional[str]:
+        """
+        Get the full command path for a tool, preferring portable installation.
+        
+        Args:
+            tool_name (str): Name of the tool
+            
+        Returns:
+            Optional[str]: Full path to the tool command, or None if not found
+        """
+        # First check portable installation
+        portable_path = self.get_portable_tool_path(tool_name)
+        if portable_path and os.path.exists(portable_path):
+            return portable_path
+        
+        # Fallback to system PATH
+        return shutil.which(tool_name)
+    
+    def run_portable_command(self, tool_name: str, args: List[str], **kwargs) -> subprocess.CompletedProcess:
+        """
+        Run a command using portable tool if available, fallback to system tool.
+        
+        Args:
+            tool_name (str): Name of the tool to run
+            args (List[str]): Arguments to pass to the tool
+            **kwargs: Additional arguments for subprocess.run
+            
+        Returns:
+            subprocess.CompletedProcess: Result of the command execution
+        """
+        command_path = self.get_tool_command(tool_name)
+        if not command_path:
+            raise FileNotFoundError(f"Tool '{tool_name}' not found")
+        
+        full_command = [command_path] + args
+        logger.info(f"🔧 Running command: {' '.join(full_command)}")
+        
+        return subprocess.run(full_command, **kwargs)
+    
     def install_system_package(self, package_name: str, timeout: int = 300) -> bool:
         """
         Install a system package using the appropriate package manager.
@@ -247,41 +641,70 @@ class DependencyManager:
     
     def ensure_build_tools(self) -> bool:
         """
-        Ensure all required build tools are installed.
+        Ensure all required build tools are installed using portable installation.
         
         Returns:
             bool: True if all tools are available, False otherwise
         """
-        if self.system not in self.system_dependencies:
-            logger.error(f"❌ Unsupported system: {self.system}")
-            return False
+        # Define essential build tools that we need
+        essential_tools = ['pandoc', 'cmake']
         
-        build_tools = self.system_dependencies[self.system]['build_tools']
+        # Add make for Unix systems (use system make if available)
+        if self.system in ['darwin', 'linux']:
+            essential_tools.append('make')
+        
+        logger.info(f"🔧 Ensuring portable build tools: {essential_tools}")
+        
+        # Try portable installation first
+        portable_success = self.install_portable_tools(essential_tools)
+        
+        if portable_success:
+            logger.info("✅ All essential build tools installed via portable method")
+            return True
+        
+        # Check which tools are still missing
         missing_tools = []
-        
-        # Check which tools are missing
-        for tool in build_tools:
-            if not self.check_system_package(tool):
+        for tool in essential_tools:
+            if not self.check_portable_tool_available(tool):
                 missing_tools.append(tool)
         
         if not missing_tools:
-            logger.info("✅ All build tools are already installed")
+            logger.info("✅ All build tools are available")
             return True
         
-        logger.info(f"🔧 Installing missing build tools: {missing_tools}")
+        logger.warning(f"⚠️ Some tools could not be installed portably: {missing_tools}")
+        logger.info("💡 You may need to install these tools manually or use system package managers")
         
-        # Install missing tools
-        success_count = 0
-        for tool in missing_tools:
-            if self.install_system_package(tool):
-                success_count += 1
-        
-        if success_count == len(missing_tools):
-            logger.info("✅ All build tools installed successfully")
+        # Return True if at least some tools are available
+        available_tools = len(essential_tools) - len(missing_tools)
+        if available_tools > 0:
+            logger.info(f"✅ {available_tools}/{len(essential_tools)} build tools are available")
             return True
         else:
-            logger.warning(f"⚠️ Only {success_count}/{len(missing_tools)} build tools installed")
+            logger.error("❌ No build tools are available")
             return False
+    
+    def check_portable_tool_available(self, tool_name: str) -> bool:
+        """
+        Check if a portable tool is available.
+        
+        Args:
+            tool_name (str): Name of the tool to check
+            
+        Returns:
+            bool: True if tool is available, False otherwise
+        """
+        # Check portable installation first
+        portable_path = self.get_portable_tool_path(tool_name)
+        if portable_path and os.path.exists(portable_path):
+            return True
+        
+        # Check system PATH as fallback
+        if tool_name in self.portable_tools:
+            binary_name = self.portable_tools[tool_name][self.system]['binary_name']
+            return shutil.which(binary_name) is not None
+        
+        return False
     
     def ensure_python_dependencies(self) -> bool:
         """

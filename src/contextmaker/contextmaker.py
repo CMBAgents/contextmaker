@@ -275,15 +275,16 @@ def main():
                             except Exception:
                                 pass
                 else:
-                    logger.warning("⚠️ All Sphinx build methods failed, falling back to standard Sphinx method")
-                    doc_format = 'sphinx'  # Fall back to standard method
+                    logger.warning("⚠️ All Sphinx build methods failed, will try standard Sphinx method next")
                     success = False
             else:
-                logger.warning("⚠️ Makefile directory not found, falling back to standard Sphinx method")
-                doc_format = 'sphinx'  # Fall back to standard method
+                logger.warning("⚠️ Makefile directory not found, will try standard Sphinx method next")
                 success = False
 
-        if doc_format == 'sphinx' and not output_file:
+        # Always try Sphinx methods before falling back to non-Sphinx
+        if not output_file and not success:
+            # Try standard Sphinx method (either as primary method or as fallback)
+            logger.info("🔍 Attempting standard Sphinx documentation build...")
             from contextmaker.converters.markdown_builder import build_markdown, combine_markdown, find_notebooks_in_doc_dirs, convert_notebook, append_notebook_markdown
             sphinx_source = auxiliary.find_sphinx_source(input_path)
             if sphinx_source:
@@ -295,23 +296,36 @@ def main():
                 else:
                     # Normal mode: create filename in output directory
                     output_file = os.path.join(output_path, f"{args.library_name}.md")
+                
+                logger.info(f"📚 Building Sphinx documentation from: {sphinx_source}")
                 build_dir = build_markdown(sphinx_source, conf_path, input_path, robust=False)
                 import glob
                 md_files = glob.glob(os.path.join(build_dir, "*.md"))
                 if not md_files:
-                    logger.warning("  Sphinx build with original conf.py failed or produced no markdown. Falling back to minimal configuration...")
+                    logger.warning("📚 Sphinx build with original conf.py failed or produced no markdown. Trying with minimal configuration...")
                     build_dir = build_markdown(sphinx_source, conf_path, input_path, robust=True)
-                combine_markdown(build_dir, [], output_file, index_path, args.library_name)
-                appended_notebooks = set()
-                for nb_path in find_notebooks_in_doc_dirs(input_path):
-                    notebook_md = convert_notebook(nb_path)
-                    if notebook_md:
-                        append_notebook_markdown(output_file, notebook_md)
-                        appended_notebooks.add(os.path.abspath(nb_path))
-                success = True
+                    md_files = glob.glob(os.path.join(build_dir, "*.md"))
+                
+                if md_files:
+                    logger.info(f"✅ Sphinx build successful! Generated {len(md_files)} markdown files")
+                    combine_markdown(build_dir, [], output_file, index_path, args.library_name)
+                    appended_notebooks = set()
+                    for nb_path in find_notebooks_in_doc_dirs(input_path):
+                        notebook_md = convert_notebook(nb_path)
+                        if notebook_md:
+                            append_notebook_markdown(output_file, notebook_md)
+                            appended_notebooks.add(os.path.abspath(nb_path))
+                    success = True
+                else:
+                    logger.warning("📚 Sphinx build failed even with minimal configuration")
+                    success = False
             else:
+                logger.info("📚 No Sphinx source directory found")
                 success = False
-        elif not output_file:
+
+        # Only if all Sphinx methods failed, try non-Sphinx converter as last resort
+        if not output_file and not success:
+            logger.info("🔄 All Sphinx methods failed, falling back to non-Sphinx converter as last resort...")
             # For non-Sphinx projects, we need to handle rough mode differently
             if args.rough and args.output and os.path.splitext(output_path)[1]:
                 # Rough mode: create in temp directory first, then copy to desired location
@@ -573,15 +587,16 @@ def make(library_name, output_path=None, input_path=None, extension='txt', rough
                             except Exception:
                                 pass
                 else:
-                    logger.warning("⚠️ All Sphinx build methods failed, falling back to standard Sphinx method")
-                    doc_format = 'sphinx'  # Fall back to standard method
+                    logger.warning("⚠️ All Sphinx build methods failed, will try standard Sphinx method next")
                     success = False
             else:
-                logger.warning("⚠️ Makefile directory not found, falling back to standard Sphinx method")
-                doc_format = 'sphinx'  # Fall back to standard method
+                logger.warning("⚠️ Makefile directory not found, will try standard Sphinx method next")
                 success = False
 
-        if doc_format == 'sphinx' and not output_file:
+        # Always try Sphinx methods before falling back to non-Sphinx
+        if not output_file and not success:
+            # Try standard Sphinx method (either as primary method or as fallback)
+            logger.info("🔍 Attempting standard Sphinx documentation build...")
             from contextmaker.converters.markdown_builder import build_markdown, combine_markdown, find_notebooks_in_doc_dirs, convert_notebook, append_notebook_markdown
             sphinx_source = auxiliary.find_sphinx_source(input_path)
             if sphinx_source:
@@ -593,23 +608,35 @@ def make(library_name, output_path=None, input_path=None, extension='txt', rough
                 else:
                     # Normal mode: create filename in output directory
                     output_file = os.path.join(output_path, f"{library_name}.md")
+                
+                logger.info(f"📚 Building Sphinx documentation from: {sphinx_source}")
                 build_dir = build_markdown(sphinx_source, conf_path, input_path, robust=False)
                 import glob
                 md_files = glob.glob(os.path.join(build_dir, "*.md"))
                 if not md_files:
-                    logger.warning("  Sphinx build with original conf.py failed or produced no markdown. Falling back to minimal configuration...")
+                    logger.warning("📚 Sphinx build with original conf.py failed or produced no markdown. Trying with minimal configuration...")
                     build_dir = build_markdown(sphinx_source, conf_path, input_path, robust=True)
-                combine_markdown(build_dir, [], output_file, index_path, library_name)
-                appended_notebooks = set()
-                for nb_path in find_notebooks_in_doc_dirs(input_path):
-                    notebook_md = convert_notebook(nb_path)
-                    if notebook_md:
-                        append_notebook_markdown(output_file, notebook_md)
-                        appended_notebooks.add(os.path.abspath(nb_path))
-                success = True
+                    md_files = glob.glob(os.path.join(build_dir, "*.md"))
+                
+                if md_files:
+                    logger.info(f"✅ Sphinx build successful! Generated {len(md_files)} markdown files")
+                    combine_markdown(build_dir, [], output_file, index_path, library_name)
+                    appended_notebooks = set()
+                    for nb_path in find_notebooks_in_doc_dirs(input_path):
+                        notebook_md = convert_notebook(nb_path)
+                        if notebook_md:
+                            append_notebook_markdown(output_file, notebook_md)
+                            appended_notebooks.add(os.path.abspath(nb_path))
+                    success = True
+                else:
+                    logger.warning("📚 Sphinx build failed even with minimal configuration")
+                    success = False
             else:
+                logger.info("📚 No Sphinx source directory found")
                 success = False
-        elif not output_file:
+
+        # Only if all Sphinx methods failed, try non-Sphinx converter as last resort
+        if not output_file and not success:
             # For non-Sphinx projects, we need to handle rough mode differently
             if rough and os.path.splitext(output_path)[1]:
                 # Rough mode: create in temp directory first, then copy to desired location
