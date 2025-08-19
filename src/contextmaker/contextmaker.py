@@ -150,6 +150,11 @@ def main():
         doc_format = auxiliary.find_format(input_path)
         logger.info(f"  Detected documentation format: {doc_format}")
 
+        # Ensure Sphinx extensions are installed if this is a Sphinx project
+        if doc_format == 'sphinx_makefile':
+            logger.info("🔍 Ensuring Sphinx extensions are installed...")
+            dependency_manager.ensure_sphinx_extensions(input_path)
+
         extension = args.extension
         output_file = None
 
@@ -443,6 +448,11 @@ def make(library_name, output_path=None, input_path=None, extension='txt', rough
 
         doc_format = auxiliary.find_format(input_path)
         logger.info(f"  Detected documentation format: {doc_format}")
+
+        # Ensure Sphinx extensions are installed if this is a Sphinx project
+        if doc_format == 'sphinx_makefile':
+            logger.info("🔍 Ensuring Sphinx extensions are installed...")
+            dependency_manager.ensure_sphinx_extensions(input_path)
 
         output_file = None
 

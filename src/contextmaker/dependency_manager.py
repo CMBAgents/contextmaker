@@ -431,6 +431,195 @@ class DependencyManager:
         logger.error(f"❌ All {max_retries} build attempts failed")
         return None
 
+    def detect_sphinx_extensions(self, conf_path: str) -> List[str]:
+        """
+        Parse conf.py to detect required Sphinx extensions.
+        
+        Args:
+            conf_path (str): Path to the Sphinx conf.py file
+            
+        Returns:
+            List[str]: List of required Sphinx extension names
+        """
+        extensions = []
+        
+        if not os.path.exists(conf_path):
+            logger.warning(f"⚠️ Sphinx conf.py not found at: {conf_path}")
+            return extensions
+        
+        try:
+            with open(conf_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            # Common patterns for extensions in conf.py
+            import re
+            
+            # Pattern 1: extensions = ['ext1', 'ext2', ...]
+            pattern1 = r'extensions\s*=\s*\[(.*?)\]'
+            matches = re.findall(pattern1, content, re.DOTALL)
+            
+            for match in matches:
+                # Extract extension names from the list
+                ext_names = re.findall(r"['\"]([^'\"]+)['\"]", match)
+                extensions.extend(ext_names)
+            
+            # Pattern 2: extensions.append('ext_name')
+            pattern2 = r'extensions\.append\([\'"]([^\'"]+)[\'"]\)'
+            matches = re.findall(pattern2, content)
+            extensions.extend(matches)
+            
+            # Pattern 3: extensions += ['ext1', 'ext2']
+            pattern3 = r'extensions\s*\+=\s*\[(.*?)\]'
+            matches = re.findall(pattern3, content, re.DOTALL)
+            for match in matches:
+                ext_names = re.findall(r"['\"]([^'\"]+)['\"]", match)
+                extensions.extend(ext_names)
+            
+            # Remove duplicates and filter out built-in extensions
+            built_in_extensions = {
+                'sphinx.ext.autodoc', 'sphinx.ext.viewcode', 'sphinx.ext.napoleon',
+                'sphinx.ext.todo', 'sphinx.ext.coverage', 'sphinx.ext.mathjax',
+                'sphinx.ext.ifconfig', 'sphinx.ext.githubpages', 'sphinx.ext.intersphinx'
+            }
+            
+            unique_extensions = []
+            for ext in extensions:
+                if ext not in built_in_extensions and ext not in unique_extensions:
+                    unique_extensions.append(ext)
+            
+            logger.info(f"🔍 Detected {len(unique_extensions)} Sphinx extensions: {unique_extensions}")
+            return unique_extensions
+            
+        except Exception as e:
+            logger.error(f"❌ Error detecting Sphinx extensions: {e}")
+            return extensions
+
+    def ensure_sphinx_extensions(self, project_path: str) -> bool:
+        """
+        Ensure all required Sphinx extensions for a project are installed.
+        
+        Args:
+            project_path (str): Path to the project root directory
+            
+        Returns:
+            bool: True if all extensions are available, False otherwise
+        """
+        logger.info(f"🔍 Checking Sphinx extensions for project: {project_path}")
+        
+        # Look for conf.py in common locations
+        conf_locations = [
+            os.path.join(project_path, 'docs', 'conf.py'),
+            os.path.join(project_path, 'doc', 'conf.py'),
+            os.path.join(project_path, 'conf.py'),
+            os.path.join(project_path, 'sphinx', 'conf.py')
+        ]
+        
+        conf_path = None
+        for loc in conf_locations:
+            if os.path.exists(loc):
+                conf_path = loc
+                break
+        
+        if not conf_path:
+            logger.info(f"ℹ️ No Sphinx conf.py found in project: {project_path}")
+            return True  # Not a Sphinx project, so no extensions needed
+        
+        # Detect required extensions from conf.py
+        detected_extensions = self.detect_sphinx_extensions(conf_path)
+        
+        # Add commonly needed extensions that are often missing
+        common_extensions = [
+            "sphinx_copybutton",  # Very commonly used for copy buttons
+            "sphinx_rtd_theme",   # Read the Docs theme
+            "sphinx.ext.autodoc", # Auto-documentation
+            "sphinx.ext.napoleon", # Google/NumPy docstring support
+            "shapely",            # Geometry library often needed for examples
+            "scikit-image",       # Image processing library (skimage) often needed for examples
+            "sphinx_automodapi"   # Auto-module API generation (used by astropy projects)
+        ]
+        
+        # Combine detected and common extensions, removing duplicates
+        all_extensions = list(dict.fromkeys(detected_extensions + common_extensions))
+        
+        logger.info(f"🔍 Checking {len(all_extensions)} Sphinx extensions (detected: {len(detected_extensions)}, common: {len(common_extensions)})")
+        
+        # Check and install missing extensions
+        missing_extensions = []
+        for ext in all_extensions:
+            if not self.check_python_package(ext):
+                missing_extensions.append(ext)
+        
+        if not missing_extensions:
+            logger.info(f"✅ All Sphinx extensions are already installed")
+            return True
+        
+        # Install missing extensions
+        logger.info(f"📦 Installing {len(missing_extensions)} missing Sphinx extensions: {missing_extensions}")
+        
+        success_count = 0
+        for ext in missing_extensions:
+            if self.install_python_package(ext):
+                success_count += 1
+            else:
+                logger.warning(f"⚠️ Failed to install Sphinx extension: {ext}")
+        
+        if success_count == len(missing_extensions):
+            logger.info(f"✅ All Sphinx extensions installed successfully")
+            return True
+        else:
+            logger.warning(f"⚠️ Only {success_count}/{len(missing_extensions)} Sphinx extensions were installed")
+            return False
+
+    def get_common_sphinx_extensions(self) -> List[str]:
+        """
+        Get a list of commonly used Sphinx extensions that might be needed.
+        
+        Returns:
+            List[str]: List of common Sphinx extension names
+        """
+        return [
+            "sphinx_copybutton",
+            "sphinx_rtd_theme",
+            "sphinx.ext.autodoc",
+            "sphinx.ext.napoleon",
+            "sphinx.ext.viewcode",
+            "sphinx.ext.todo",
+            "sphinx.ext.coverage",
+            "sphinx.ext.mathjax",
+            "sphinx.ext.ifconfig",
+            "sphinx.ext.githubpages",
+            "sphinx.ext.intersphinx",
+            "sphinx.ext.autosummary",
+            "sphinx.ext.doctest",
+            "sphinx.ext.imgmath",
+            "sphinx.ext.graphviz",
+            "sphinx.ext.inheritance_diagram",
+            "sphinx.ext.linkcode",
+            "sphinx.ext.extlinks",
+            "sphinx.ext.issue",
+            "sphinx.ext.warning",
+            "sphinx.ext.duration",
+            "sphinx.ext.autosectionlabel",
+            "sphinx.ext.tabs",
+            "sphinx_panels",
+            "sphinx_tabs.tabs",
+            "sphinx_automodapi.automodapi",
+            "sphinx_automodapi.smart_resolver",
+            "sphinx_gallery.gen_gallery",
+            "nbsphinx",
+            "myst_parser",
+            "sphinxcontrib.bibtex",
+            "sphinxcontrib.programoutput",
+            "sphinxcontrib.plantuml",
+            "sphinxcontrib.websupport",
+            "sphinxcontrib.applehelp",
+            "sphinxcontrib.devhelp",
+            "sphinxcontrib.htmlhelp",
+            "sphinxcontrib.jsmath",
+            "sphinxcontrib.qthelp",
+            "sphinxcontrib.serializinghtml"
+        ]
+
 
 # Global instance for easy access
 dependency_manager = DependencyManager()
