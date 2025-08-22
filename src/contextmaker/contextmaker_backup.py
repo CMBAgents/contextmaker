@@ -120,7 +120,7 @@ def main():
                 # Check if this library needs special build steps
                 if args.library_name.lower() == "camb":
                     if auxiliary.ensure_camb_built(input_path):
-                        auxiliary.patch_camb_sys_exit(input_path)
+            auxiliary.patch_camb_sys_exit(input_path)
                         logger.info("✅ CAMB Fortran library built successfully")
                     else:
                         logger.warning("⚠️ Failed to build CAMB Fortran library")
@@ -373,7 +373,7 @@ def main():
                 logger.info(f" Documentation processed successfully despite library '{args.library_name}' not being available as a Python package.")
             
             return final_output
-                else:
+        else:
             logger.warning("  Conversion completed with warnings or partial results.")
             
             # INTELLIGENT FALLBACK: Non-Sphinx first, then notebooks
@@ -411,25 +411,49 @@ def main():
                     nonsphinx_success = nonsphinx_converter.create_final_markdown(input_path, output_path, args.library_name)
                     if nonsphinx_success:
                         output_file = os.path.join(output_path, f"{args.library_name}.md")
+                    output_file = os.path.join(output_path, f"{args.library_name}.md")
                 
-                if nonsphinx_success and output_file:
-                    logger.info(f"✅ Non-Sphinx fallback successful! Output: {output_file}")
+                # Create markdown content from notebooks
+                notebook_content = []
+                notebook_content.append(f"# Documentation for {args.library_name}\n\n")
+                notebook_content.append("## Notebooks\n\n")
+                
+                for nb_path in notebooks_found:
+                    notebook_content.append(f"### {os.path.basename(nb_path)}\n\n")
+                    try:
+                        # Try to read notebook content
+                        import nbformat
+                        nb = nbformat.read(nb_path, as_version=4)
+                        
+                        # Extract markdown cells
+                        for cell in nb.cells:
+                            if cell.cell_type == 'markdown':
+                                notebook_content.append(cell.source + "\n\n")
+                            elif cell.cell_type == 'code':
+                                notebook_content.append(f"```python\n{cell.source}\n```\n\n")
+                    except Exception as e:
+                        notebook_content.append(f"*[Notebook content could not be read: {e}]*\n\n")
+                    
+                    notebook_content.append("---\n\n")
+                
+                # Write the markdown file
+                try:
+                    with open(output_file, 'w', encoding='utf-8') as f:
+                        f.write(''.join(notebook_content))
+                    
+                    logger.info(f"✅ Documentation créée directement à partir des notebooks: {output_file}")
                     
                     # Convert to text if needed
                     if extension == 'txt':
-                        if output_file.endswith('.txt'):
-                            final_output = output_file
-                        else:
-                            from contextmaker.converters.markdown_builder import markdown_to_text
-                            txt_file = os.path.splitext(output_file)[0] + ".txt"
-                            markdown_to_text(output_file, txt_file)
-                            if os.path.exists(txt_file):
-                                try:
-                                    os.remove(output_file)
-                                    logger.info(f"Deleted markdown file after text conversion: {output_file}")
-                                except Exception as e:
-                                    logger.warning(f"Could not delete markdown file: {output_file}. Error: {e}")
-                            final_output = txt_file
+                        txt_file = os.path.splitext(output_file)[0] + ".txt"
+                        markdown_to_text(output_file, txt_file)
+                        if os.path.exists(txt_file):
+                            try:
+                                os.remove(output_file)
+                                logger.info(f"Deleted markdown file after text conversion: {output_file}")
+                            except Exception as e:
+                                logger.warning(f"Could not delete markdown file: {output_file}. Error: {e}")
+                        final_output = txt_file
                     else:
                         final_output = output_file
                     
@@ -437,93 +461,72 @@ def main():
                         logger.info(f" Documentation processed successfully despite library '{args.library_name}' not being available as a Python package.")
                     
                     return final_output
-                else:
-                    logger.warning("⚠️ Non-Sphinx converter failed")
                     
-            except Exception as e:
-                logger.warning(f"⚠️ Non-Sphinx converter failed: {e}")
-                nonsphinx_success = False
+                except Exception as e:
+                    logger.warning(f"⚠️ Failed to create documentation from notebooks: {e}")
+                    logger.info("🔄 Falling back to non-Sphinx converter...")
             
-            # STEP 2: If non-Sphinx failed, try notebooks as last resort
-            if not nonsphinx_success:
-                logger.info("🔄 Non-Sphinx failed, trying notebooks as last resort...")
-                
-                # Import necessary functions  
-                from contextmaker.converters.markdown_builder import find_notebooks_in_doc_dirs, markdown_to_text
-                
-                # Check if we found notebooks during Sphinx attempts
-                notebooks_found = []
-                try:
-                    notebooks_found = find_notebooks_in_doc_dirs(input_path)
-                except:
-                    pass
-                
-                if notebooks_found:
-                    logger.info(f"🚀 Found {len(notebooks_found)} notebooks ! Creating documentation from notebooks...")
-                    
-                    # Create output file directly from notebooks
-                    if args.rough and args.output and os.path.splitext(output_path)[1]:
-                        # Rough mode: use output_path directly
+            # If notebooks approach failed or no notebooks, use traditional non-Sphinx fallback
+            logger.warning("📚 All Sphinx methods failed, using non-Sphinx fallback...")
+            
+            # Import non-Sphinx converter
+            from contextmaker.converters import nonsphinx_converter
+            
+            # Try non-Sphinx converter as last resort
+            if args.rough and args.output and os.path.splitext(output_path)[1]:
+                # Rough mode: create in temp directory first, then copy to desired location
+                temp_output_dir = os.path.dirname(output_path)
+                success = nonsphinx_converter.create_final_markdown(input_path, temp_output_dir, args.library_name)
+                if success:
+                    # Copy the generated file to the desired location
+                    temp_file = os.path.join(temp_output_dir, f"{args.library_name}.txt")
+                    if os.path.exists(temp_file):
+                        import shutil
+                        shutil.copy2(temp_file, output_path)
                         output_file = output_path
-                    else:
-                        # Normal mode: create filename in output directory
-                        output_file = os.path.join(output_path, f"{args.library_name}.md")
-                    
-                    # Create markdown content from notebooks
-                    notebook_content = []
-                    notebook_content.append(f"# Documentation for {args.library_name}\n\n")
-                    notebook_content.append("## Notebooks\n\n")
-                    
-                    for nb_path in notebooks_found:
-                        notebook_content.append(f"### {os.path.basename(nb_path)}\n\n")
+                        # Clean up temp file
                         try:
-                            # Try to read notebook content
-                            import nbformat
-                            nb = nbformat.read(nb_path, as_version=4)
-                            
-                            # Extract markdown cells
-                            for cell in nb.cells:
-                                if cell.cell_type == 'markdown':
-                                    notebook_content.append(cell.source + "\n\n")
-                                elif cell.cell_type == 'code':
-                                    notebook_content.append(f"```python\n{cell.source}\n```\n\n")
-                        except Exception as e:
-                            notebook_content.append(f"*[Notebook content could not be read: {e}]*\n\n")
-                        
-                        notebook_content.append("---\n\n")
-                    
-                    # Write the markdown file
-                    try:
-                        with open(output_file, 'w', encoding='utf-8') as f:
-                            f.write(''.join(notebook_content))
-                        
-                        logger.info(f"✅ Documentation créée directement à partir des notebooks: {output_file}")
-                        
-                        # Convert to text if needed
-                        if extension == 'txt':
-                            txt_file = os.path.splitext(output_file)[0] + ".txt"
-                            markdown_to_text(output_file, txt_file)
-                            if os.path.exists(txt_file):
-                                try:
-                                    os.remove(output_file)
-                                    logger.info(f"Deleted markdown file after text conversion: {output_file}")
-                                except Exception as e:
-                                    logger.warning(f"Could not delete markdown file: {output_file}. Error: {e}")
-                            final_output = txt_file
-                        else:
-                            final_output = output_file
-                        
-                        if not library_available:
-                            logger.info(f" Documentation processed successfully despite library '{args.library_name}' not being available as a Python package.")
-                        
-                        return final_output
-                        
-                    except Exception as e:
-                        logger.warning(f"⚠️ Failed to create documentation from notebooks: {e}")
+                            os.remove(temp_file)
+                        except Exception:
+                            pass
+                    else:
+                        success = False
+            else:
+                # Normal mode: create filename in output directory
+                success = nonsphinx_converter.create_final_markdown(input_path, output_path, args.library_name)
+                if success:
+                output_file = os.path.join(output_path, f"{args.library_name}.md")
+        
+        if success and output_file:
+                logger.info(f"✅ Non-Sphinx fallback successful! Output: {output_file}")
+            if extension == 'txt':
+                    # Convert markdown to text if needed
+                if output_file.endswith('.txt'):
+                    final_output = output_file
                 else:
-                    logger.warning("⚠️ No notebooks found for fallback")
+                    txt_file = os.path.splitext(output_file)[0] + ".txt"
+                    markdown_to_text(output_file, txt_file)
+                    if os.path.exists(txt_file):
+                        try:
+                            os.remove(output_file)
+                            logger.info(f"Deleted markdown file after text conversion: {output_file}")
+                        except Exception as e:
+                            logger.warning(f"Could not delete markdown file: {output_file}. Error: {e}")
+                    final_output = txt_file
+            else:
+                final_output = output_file
             
-            logger.error("❌ All conversion methods failed: Sphinx, non-Sphinx, and notebooks")
+            if not library_available:
+                logger.info(f" Documentation processed successfully despite library '{args.library_name}' not being available as a Python package.")
+            
+            return final_output
+        else:
+                logger.error("❌ All conversion methods failed: Sphinx, notebooks, and non-Sphinx")
+                return None
+
+        # If we reach here, all methods failed
+        if not success:
+            logger.error("❌ All conversion methods failed: Sphinx and non-Sphinx")
             return None
 
         # At the very end, delete the conversion.log file if it exists

@@ -442,25 +442,28 @@ def ensure_camb_built(camb_dir: str):
     Ensure the CAMB Fortran library is built. If not, build it automatically.
     Args:
         camb_dir (str): Path to the CAMB source directory (where setup.py is).
-    Raises:
-        RuntimeError: If the build fails or setup.py is missing.
+    Returns:
+        bool: True if build successful or already built, False if build failed.
     """
     libname = "cambdll.dll" if platform.system() == "Windows" else "camblib.so"
     libpath = find_library_file(camb_dir, libname)
     if not libpath:
         setup_py = os.path.join(camb_dir, "setup.py")
         if not os.path.isfile(setup_py):
-            raise RuntimeError(f"setup.py not found in {camb_dir}")
+            logger.error(f"setup.py not found in {camb_dir}")
+            return False
         logger.info(f"Building CAMB Fortran library in {camb_dir}...")
         result = subprocess.run([sys.executable, "setup.py", "make"], cwd=camb_dir)
         # Search again after build
         libpath = find_library_file(camb_dir, libname)
         if result.returncode != 0 or not libpath:
             logger.error("Failed to build CAMB Fortran library. Please check your Fortran compiler and dependencies.")
-            raise RuntimeError("Failed to build CAMB Fortran library. Please check your Fortran compiler and dependencies.")
+            return False
         logger.info(f"CAMB Fortran library built successfully at {libpath}.")
+        return True
     else:
         logger.info(f"CAMB Fortran library already built at {libpath}.")
+        return True
 
 # --- CAMB sys.exit patching utility ---
 
