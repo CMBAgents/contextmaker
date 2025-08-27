@@ -24,14 +24,14 @@ class NotebookConverter:
         Returns:
             Tuple of (output_file_path, success)
         """
-        logger.info("🔄 Creating documentation from notebooks only...")
+        logger.info("Creating documentation from notebooks only...")
         
         from .utils import find_notebooks_in_doc_dirs
         
         notebooks_found = find_notebooks_in_doc_dirs(input_path)
         
         if notebooks_found:
-            logger.info(f"🚀 Found {len(notebooks_found)} notebooks! Creating documentation from notebooks...")
+            logger.info(f"Found {len(notebooks_found)} notebooks! Creating documentation from notebooks...")
             
             # Create output file directly from notebooks
             output_file = os.path.join(output_path, f"{library_name}.md")
@@ -64,11 +64,11 @@ class NotebookConverter:
                 with open(output_file, 'w', encoding='utf-8') as f:
                     f.write(''.join(notebook_content))
                 
-                logger.info(f"✅ Documentation created directly from notebooks: {output_file}")
+                logger.info(f"Documentation created directly from notebooks: {output_file}")
                 return output_file, True
                 
             except Exception as e:
-                logger.warning(f"⚠️ Failed to create documentation from notebooks: {e}")
+                logger.warning(f"Failed to create documentation from notebooks: {e}")
                 return None, False
         
         return None, False

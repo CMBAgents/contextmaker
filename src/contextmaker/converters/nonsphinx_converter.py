@@ -13,7 +13,7 @@ from .utils import detector
 import html2text
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
+# Removed logging.basicConfig(level=logging.INFO) to avoid conflicts with main logging configuration
 
 
 class NonsphinxConverter:
@@ -43,17 +43,17 @@ class NonsphinxConverter:
             if success:
                 expected_file = os.path.join(output_path, f"{library_name}.md")
                 if os.path.exists(expected_file):
-                    logger.info(f"✅ Non-Sphinx conversion successful: {expected_file}")
+                    logger.info(f"Non-Sphinx conversion successful: {expected_file}")
                     return expected_file, True
                 else:
-                    logger.warning("⚠️ Non-Sphinx conversion succeeded but output file not found")
+                    logger.warning("Non-Sphinx conversion succeeded but output file not found")
                     return None, False
             else:
-                logger.warning("⚠️ Non-Sphinx conversion failed")
+                logger.warning("Non-Sphinx conversion failed")
                 return None, False
                 
         except Exception as e:
-            logger.warning(f"⚠️ Non-Sphinx fallback failed: {e}")
+            logger.warning(f"Non-Sphinx fallback failed: {e}")
             return None, False
 
     def _create_markdown_files(self, lib_path, output_path):
@@ -148,8 +148,8 @@ class NonsphinxConverter:
             with open(output_file, 'w', encoding='utf-8') as f:
                 f.write(''.join(combined_content))
             
-            logger.info(f"✅ Combined {len(md_files)} markdown files into: {output_file}")
-            logger.info("📝 Note: File created as .md - conversion to .txt will be handled by contextmaker.py if requested")
+            logger.info(f"Combined {len(md_files)} markdown files into: {output_file}")
+            logger.info("Note: File created as .md - conversion to .txt will be handled by contextmaker.py if requested")
             return True
             
         except Exception as e:
@@ -188,7 +188,7 @@ class NonsphinxConverter:
                         for doc in docstrings:
                             f.write(f"{doc}\n\n")
                 
-                logger.info(f"📄 Extracted docstrings from: {py_path}")
+                logger.info(f"Extracted docstrings from: {py_path}")
                 
         except Exception as e:
             logger.warning(f"Failed to extract docstrings from {py_path}: {e}")
@@ -206,7 +206,7 @@ class NonsphinxConverter:
                 f.write(source_code)
                 f.write("\n```\n")
             
-            logger.info(f"💻 Converted source to markdown: {py_path}")
+            logger.info(f"Converted source to markdown: {py_path}")
             
         except Exception as e:
             logger.warning(f"Failed to convert source {py_path}: {e}")
@@ -221,7 +221,7 @@ class NonsphinxConverter:
                 if os.path.exists(doc_path):
                     output_file = os.path.join(output_path, "basic_documentation.md")
                     shutil.copy2(doc_path, output_file)
-                    logger.info(f"📚 Created basic documentation from: {doc_file}")
+                    logger.info(f"Created basic documentation from: {doc_file}")
                     return
             
             # If no README found, create minimal documentation
@@ -231,7 +231,7 @@ class NonsphinxConverter:
                 f.write(f"Library path: {lib_path}\n\n")
                 f.write("No README or documentation files found.\n")
             
-            logger.info("📚 Created minimal basic documentation")
+            logger.info("Created minimal basic documentation")
             
         except Exception as e:
             logger.warning(f"Failed to create basic documentation: {e}")

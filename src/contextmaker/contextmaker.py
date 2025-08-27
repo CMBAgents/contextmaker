@@ -18,15 +18,77 @@ except ImportError:
     from utils import dependency_installer
 import subprocess
 
+### Clean logs at startup ###
+def clean_logs_startup():
+    """Clean log files at the beginning of the program."""
+    try:
+        # Get the project root directory
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        logs_dir = os.path.join(project_root, "logs")
+        clean_logs_script = os.path.join(logs_dir, "clean_logs.py")
+        
+        if os.path.exists(clean_logs_script):
+            # Import and run clean_logs function
+            import importlib.util
+            spec = importlib.util.spec_from_file_location("clean_logs", clean_logs_script)
+            clean_logs_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(clean_logs_module)
+            
+            # Call the clean_logs function
+            if hasattr(clean_logs_module, 'clean_logs'):
+                clean_logs_module.clean_logs()
+    except Exception as e:
+        # Silently fail if cleaning logs fails - don't stop the program
+        pass
+
+# Clean logs before setting up logging
+clean_logs_startup()
+
 ### Set up the logger ###
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "logs", "conversion.log"))
-    ]
-)
+# Get the project root directory (where pyproject.toml is located)
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+logs_dir = os.path.join(project_root, "logs")
+os.makedirs(logs_dir, exist_ok=True)
+
+# Intelligent logging configuration using basicConfig
+# This approach should work better across different Python environments
+log_file_path = os.path.join(logs_dir, "conversion.log")
+
+try:
+    # Try to configure logging with basicConfig
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        handlers=[
+            logging.StreamHandler(sys.stdout),
+            logging.FileHandler(log_file_path)
+        ],
+        force=True  # Force reconfiguration
+    )
+except Exception as e:
+    # Fallback: configure manually if basicConfig fails
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+    
+    # Clear existing handlers
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
+    
+    # Create formatter
+    formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+    
+    # Create handlers
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(formatter)
+    
+    file_handler = logging.FileHandler(log_file_path)
+    file_handler.setFormatter(formatter)
+    
+    # Add handlers
+    root_logger.addHandler(console_handler)
+    root_logger.addHandler(file_handler)
+
+# Get logger for this module
 logger = logging.getLogger(__name__)
 ### End of logger setup ###
 
@@ -37,7 +99,7 @@ def _add_notebooks_to_file(input_path, output_file):
     
     notebooks_found = find_notebooks_in_doc_dirs(input_path)
     if notebooks_found:
-        logger.info(f"📒 Found {len(notebooks_found)} notebooks, appending to documentation...")
+        logger.info(f"Found {len(notebooks_found)} notebooks, appending to documentation...")
         
         # Read the current content
         with open(output_file, 'r', encoding='utf-8') as f:
@@ -54,7 +116,7 @@ def _add_notebooks_to_file(input_path, output_file):
                         notebook_md_content = f.read()
                     notebook_content.append(notebook_md_content)
                 except Exception as e:
-                    logger.warning(f"⚠️ Could not read notebook markdown {notebook_md}: {e}")
+                    logger.warning(f"Could not read notebook markdown {notebook_md}: {e}")
                     notebook_content.append(f"[Notebook content could not be read: {notebook_md}]")
                 notebook_content.append("\n" + "-" * 50 + "\n")
         
@@ -62,11 +124,26 @@ def _add_notebooks_to_file(input_path, output_file):
             # Write back with notebooks
             with open(output_file, 'w', encoding='utf-8') as f:
                 f.write(current_content + ''.join(notebook_content))
-            logger.info(f"✅ Added {len(notebooks_found)} notebooks to documentation")
+            logger.info(f"Added {len(notebooks_found)} notebooks to documentation")
 
 def _convert_to_text(markdown_file):
     """Convert markdown file to text and clean up."""
-    from contextmaker.converters.utils.text_converter import markdown_to_text
+    try:
+        # Try relative import first
+        from .converters.utils.text_converter import markdown_to_text
+    except ImportError:
+        try:
+            # Fallback to absolute import
+            from contextmaker.converters.utils.text_converter import markdown_to_text
+        except ImportError:
+            # Final fallback: direct import from the file
+            import sys
+            # Get the path to the text_converter module
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            utils_dir = os.path.join(current_dir, "converters", "utils")
+            if utils_dir not in sys.path:
+                sys.path.insert(0, utils_dir)
+            from text_converter import markdown_to_text
     
     txt_file = os.path.splitext(markdown_file)[0] + ".txt"
     markdown_to_text(markdown_file, txt_file)
@@ -80,6 +157,19 @@ def _convert_to_text(markdown_file):
         return txt_file
     
     return markdown_file
+
+def _get_file_size(file_path):
+    """Get file size in human readable format."""
+    try:
+        size_bytes = os.path.getsize(file_path)
+        if size_bytes < 1024:
+            return f"{size_bytes} B"
+        elif size_bytes < 1024 * 1024:
+            return f"{size_bytes / 1024:.1f} KB"
+        else:
+            return f"{size_bytes / (1024 * 1024):.1f} MB"
+    except:
+        return "Unknown size"
 
 ### Parsing arguments ###
 def parse_args():
@@ -111,13 +201,13 @@ def main():
         )
         
         if result:
-            logger.info(f"✅ Conversion completed successfully. Output: {result}")
+            logger.info(f"Conversion completed successfully. Output: {result}")
         else:
-            logger.error("❌ Conversion failed")
+            logger.error("Conversion failed")
             sys.exit(1)
             
     except Exception as e:
-        logger.exception(f" ❌ An unexpected error occurred: {e}")
+        logger.exception(f"An unexpected error occurred: {e}")
         sys.exit(1)
 
 ### Make function ###
@@ -135,16 +225,16 @@ def make(library_name, output_path=None, input_path=None, extension='txt', rough
     """
     try:
         # ÉTAPE 1: Installation automatique des dépendances
-        logger.info("Installation automatique des dépendances...")
+        logger.info("Installing dependencies automatically...")
         dependency_installer.install_all_missing_dependencies()
         
         # ÉTAPE 2: Vérification que les modules essentiels sont disponibles
-        logger.info("Vérification des modules essentiels...")
+        logger.info("Verifying essential modules...")
         try:
             # Les converters sont maintenant importés au niveau du module
-            logger.info("Tous les modules essentiels sont disponibles")
+            logger.info("All essential modules are available")
         except ImportError as e:
-            logger.error(f"Erreur d'import après installation des dépendances: {e}")
+            logger.error(f"Import error after dependency installation: {e}")
             return None
         
         # ÉTAPE 3: Vérification de la bibliothèque cible
@@ -210,70 +300,76 @@ def make(library_name, output_path=None, input_path=None, extension='txt', rough
         # ÉTAPE 10: Initialisation des variables de conversion
         output_file = None
         success = False
+        conversion_mode = "Unknown"
 
         # ÉTAPE 11: Logique de fallback en cascade selon vos spécifications
         # 1) Sphinx (Makefile) - Priorité haute
         if doc_format == 'sphinx_makefile':
-            logger.info("🔄 Tentative de conversion Sphinx (Makefile)")
+            logger.info("Attempting Sphinx conversion (Makefile)")
             converter = SphinxMakefileConverter()
             output_file, success = converter.convert(input_path, output_path, library_name)
             if success:
-                logger.info("✅ Conversion Sphinx (Makefile) réussie")
+                logger.info("Sphinx conversion (Makefile) successful")
+                conversion_mode = "Sphinx Makefile"
             else:
-                logger.warning("⚠️ Sphinx (Makefile) échoué, passage au fallback Sphinx build")
+                logger.warning("Sphinx (Makefile) failed, trying Sphinx build fallback")
                 success = False
 
         # 2) Sphinx build (fichiers conf.py et .rst) - Fallback Sphinx
         if not success and detector.has_documentation(input_path):
-            logger.info("🔄 Tentative de conversion Sphinx build (conf.py + .rst)")
+            logger.info("Attempting Sphinx build conversion (conf.py + .rst)")
             converter = SphinxBuildConverter()
             output_file, success = converter.convert(input_path, output_path, library_name)
             if success:
-                logger.info("✅ Conversion Sphinx build réussie")
+                logger.info("Sphinx build conversion successful")
+                conversion_mode = "Sphinx Build"
             else:
-                logger.warning("⚠️ Sphinx build échoué, passage au fallback non-Sphinx")
+                logger.warning("Sphinx build failed, trying non-Sphinx fallback")
                 success = False
 
         # 3) Non-Sphinx build (md, docstrings, ...) - Fallback documentation
         if not success:
-            logger.info("🔄 Tentative de conversion non-Sphinx (md, docstrings, ...)")
+            logger.info("Attempting non-Sphinx conversion (md, docstrings, ...)")
             converter = NonsphinxConverter()
             output_file, success = converter.convert(input_path, output_path, library_name)
             if success:
-                logger.info("✅ Conversion non-Sphinx réussie")
+                logger.info("Non-Sphinx conversion successful")
+                conversion_mode = "Non-Sphinx"
             else:
-                logger.warning("⚠️ Non-Sphinx échoué, passage au fallback raw source code")
+                logger.warning("Non-Sphinx failed, trying raw source code fallback")
                 success = False
 
         # 4) Raw source code - Fallback code source
         if not success:
-            logger.info("🔄 Tentative de conversion raw source code")
+            logger.info("Attempting raw source code conversion")
             converter = RawSourceCodeConverter()
             output_file, success = converter.convert(input_path, output_path, library_name)
             if success:
-                logger.info("✅ Conversion raw source code réussie")
+                logger.info("Raw source code conversion successful")
+                conversion_mode = "Raw Source Code"
             else:
-                logger.warning("⚠️ Raw source code échoué, passage au fallback notebooks")
+                logger.warning("Raw source code failed, trying notebooks fallback")
                 success = False
 
         # 5) Notebooks - Dernier recours absolu
         if not success:
-            logger.info("🔄 Tentative de conversion via notebooks (dernier recours)")
+            logger.info("Attempting conversion via notebooks (last resort)")
             converter = NotebookConverter()
             output_file, success = converter.convert(input_path, output_path, library_name)
             if success:
-                logger.info("✅ Conversion via notebooks réussie")
+                logger.info("Conversion via notebooks successful")
+                conversion_mode = "Notebooks"
             else:
-                logger.warning("⚠️ Notebooks échoué")
+                logger.warning("Notebooks conversion failed")
                 success = False  # S'assurer que success = False à la fin
 
         # ÉTAPE 12: Ajout automatique des notebooks si conversion réussie
         if success and output_file:
-            logger.info(f"✅ Conversion completed successfully. Output: {output_file}")
+            logger.info(f"Conversion completed successfully. Output: {output_file}")
             
             # Ajouter automatiquement les notebooks si ils existent
             if detector.has_notebook(input_path):
-                logger.info("📒 Ajout automatique des notebooks à la documentation...")
+                logger.info("Automatically adding notebooks to documentation...")
                 _add_notebooks_to_file(input_path, output_file)
             
             # Convert to text if needed
@@ -285,15 +381,18 @@ def make(library_name, output_path=None, input_path=None, extension='txt', rough
             if not library_available:
                 logger.info(f"Documentation processed successfully despite library '{library_name}' not being available as a Python package.")
             
+            # Final success message with green checkmark and summary
+            file_size = _get_file_size(final_output)
+            logger.info(f"✅ Conversion successful! Mode: {conversion_mode}, Output: {final_output}, Size: {file_size}")
+            
             return final_output
         else:
-            logger.error("❌ All conversion methods failed: Sphinx Makefile, Sphinx build, non-Sphinx, raw source code, and notebooks")
+            logger.error("All conversion methods failed: Sphinx Makefile, Sphinx build, non-Sphinx, raw source code, and notebooks")
             return None
 
     except Exception as e:
-        logger.exception(f" ❌ An unexpected error occurred: {e}")
+        logger.exception(f"An unexpected error occurred: {e}")
         raise
-
 
 if __name__ == "__main__":
     main()

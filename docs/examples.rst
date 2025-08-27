@@ -1,233 +1,450 @@
 Examples
 ========
 
-This section provides practical examples of how to use ContextMaker for different scenarios.
+This section provides practical examples of using ContextMaker for various scenarios.
 
-Simple Usage Examples
---------------------
+Basic Examples
+--------------
 
-Example 1: Make pixell documentation
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: bash
-
-   # 1. Clone pixell (if not already done)
-   git clone https://github.com/simonsobs/pixell.git ~/Documents/GitHub/pixell
-
-   # 2. Generate documentation
-   contextmaker pixell
-
-   # 3. Result: ~/your_context_library/pixell.txt
-
-Example 2: Convert numpy documentation
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Convert NumPy Documentation
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
-   # 1. Clone numpy
-   git clone https://github.com/numpy/numpy.git ~/Documents/GitHub/numpy
-
-   # 2. Generate documentation
+   # Basic conversion to text
    contextmaker numpy
 
-   # 3. Result: ~/your_context_library/numpy.txt
+   # Convert to markdown
+   contextmaker numpy --extension md
 
-Example 3: Custom output location
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   # Custom output directory
+   contextmaker numpy --output ./numpy_docs
 
-.. code-block:: bash
+   # Use specific numpy installation
+   contextmaker numpy --input_path /usr/local/lib/python3.9/site-packages/numpy
 
-   # Generate documentation in custom location
-   contextmaker pixell --output ~/Documents/my_documentation
-
-   # Result: ~/Documents/my_documentation/pixell.txt
-
-Converting Sphinx Documentation
-------------------------------
-
-Example 4: Manual path specification
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-For a typical Sphinx project structure:
+Convert Scientific Libraries
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
-   myproject/
-   ├── docs/
-   │   ├── conf.py
-   │   ├── index.rst
-   │   └── api.rst
-   └── src/
-       └── myproject/
+   # Convert pixell (CMB processing library)
+   contextmaker pixell --output ./pixell_docs
+
+   # Convert CAMB (cosmology library)
+   contextmaker camb --output ./camb_docs
+
+   # Convert scipy
+   contextmaker scipy --extension md --output ./scipy_docs
+
+Convert Custom Projects
+~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
-   # Automatic search (if found in common locations)
-   contextmaker myproject
+   # Convert project in current directory
+   contextmaker myproject --input_path ./myproject
 
-   # Manual path specification
-   contextmaker myproject --input_path /path/to/myproject
+   # Convert with custom output
+   contextmaker myproject --input_path ./myproject --output ./docs/myproject
 
-Example 5: Sphinx with custom configuration
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   # Rough mode for direct file output
+   contextmaker myproject --input_path ./myproject --output myproject.txt --rough
 
-.. code-block:: bash
+Advanced Examples
+----------------
 
-   contextmaker myproject --input_path /path/to/myproject/docs --output ./custom_output
+Batch Processing
+~~~~~~~~~~~~~~~
 
-Converting Jupyter Notebooks
----------------------------
-
-Example 6: Notebook collection
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-For a collection of Jupyter notebooks:
+Convert multiple libraries in sequence:
 
 .. code-block:: bash
 
-   notebooks/
-   ├── tutorial_01.ipynb
-   ├── tutorial_02.ipynb
-   └── examples.ipynb
+   # Simple loop
+   for lib in numpy pandas matplotlib scipy; do
+       echo "Converting $lib..."
+       contextmaker $lib --output ./docs/$lib
+   done
+
+Using parallel processing:
 
 .. code-block:: bash
 
-   contextmaker myproject --input_path ./notebooks
+   # Install parallel if not available
+   # macOS: brew install parallel
+   # Ubuntu: sudo apt-get install parallel
 
-Converting Source Code
----------------------
+   # Convert libraries in parallel
+   parallel contextmaker {} --output ./docs/{} ::: numpy pandas matplotlib scipy
 
-Example 7: Python package with docstrings
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   # With progress tracking
+   parallel --bar contextmaker {} --output ./docs/{} ::: numpy pandas matplotlib scipy
 
-For a Python package with comprehensive docstrings:
-
-.. code-block:: bash
-
-   mypackage/
-   ├── mypackage/
-   │   ├── __init__.py
-   │   ├── core.py
-   │   └── utils.py
-   └── README.md
+Custom Library Paths
+~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
-   contextmaker mypackage --input_path ./mypackage
+   # Convert library from specific path
+   contextmaker mylib --input_path /opt/mylib --output ./mylib_docs
 
-Converting Mixed Content
------------------------
+   # Convert from git repository
+   git clone https://github.com/user/mylib.git
+   contextmaker mylib --input_path ./mylib --output ./mylib_docs
 
-Example 8: Project with multiple documentation types
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   # Convert from virtual environment
+   contextmaker mylib --input_path ~/venv/lib/python3.9/site-packages/mylib
 
-For a project with various documentation sources:
+Programmatic Examples
+--------------------
 
-.. code-block:: bash
-
-   scientific_project/
-   ├── docs/
-   │   ├── conf.py
-   │   └── index.rst
-   ├── notebooks/
-   │   └── analysis.ipynb
-   ├── src/
-   │   └── scientific/
-   └── README.md
-
-.. code-block:: bash
-
-   contextmaker scientific_project --input_path ./scientific_project
-
-Advanced Usage Examples
-----------------------
-
-Example 9: Direct module usage
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: bash
-
-   # Use the module directly
-   python -m contextmaker.contextmaker pixell
-
-Example 10: Manual Sphinx conversion with HTML->text
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: bash
-
-   python src/contextmaker/converters/markdown_builder.py \
-     --sphinx-source /path/to/project/docs \
-     --output ./output.txt \
-     --source-root /path/to/project/src \
-     --html-to-text
-
-Legacy Interface Examples
-------------------------
-
-Example 11: Legacy command line interface
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: bash
-
-   python -m contextmaker.contextmaker \
-     --input_path /path/to/myproject \
-     --output_path ./converted_docs
-
-Example 12: Legacy with library name
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: bash
-
-   python -m contextmaker.contextmaker \
-     --input_path /path/to/myproject/docs \
-     --output_path ./converted_docs
-
-Python API Examples
-------------------
-
-Example 13: Programmatic usage
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Basic Python Usage
+~~~~~~~~~~~~~~~~~
 
 .. code-block:: python
 
-   import sys
-   from contextmaker.contextmaker import main
+   from contextmaker.contextmaker import make
 
-   # Set up arguments programmatically
-   sys.argv = [
-       'contextmaker',
-       'pixell',
-       '--output', './my_output'
-   ]
+   # Simple conversion
+   result = make("numpy")
+   if result:
+       print(f"Successfully converted numpy: {result}")
+
+   # With custom parameters
+   result = make(
+       library_name="pixell",
+       output_path="./pixell_docs",
+       extension="md",
+       rough=False
+   )
+
+   if result:
+       print(f"✅ Pixell converted to: {result}")
+
+Batch Processing in Python
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+   from contextmaker.contextmaker import make
+   import concurrent.futures
+   import os
+
+   libraries = ["numpy", "pandas", "matplotlib", "scipy"]
+
+   def convert_library(lib_name):
+       """Convert a single library and return status."""
+       try:
+           result = make(
+               library_name=lib_name,
+               output_path=f"./docs/{lib_name}",
+               extension="txt"
+           )
+           return lib_name, result, True, None
+       except Exception as e:
+           return lib_name, None, False, str(e)
+
+   # Sequential processing
+   print("Converting libraries sequentially...")
+   for lib in libraries:
+       lib_name, result, success, error = convert_library(lib)
+       status = "✅" if success else "❌"
+       print(f"{status} {lib_name}: {result or error}")
+
+   # Parallel processing
+   print("\nConverting libraries in parallel...")
+   with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+       futures = [executor.submit(convert_library, lib) for lib in libraries]
+       
+       for future in concurrent.futures.as_completed(futures):
+           lib_name, result, success, error = future.result()
+           status = "✅" if success else "❌"
+           print(f"{status} {lib_name}: {result or error}")
+
+Error Handling and Logging
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+   import logging
+   from contextmaker.contextmaker import make
+
+   # Configure logging
+   logging.basicConfig(
+       level=logging.INFO,
+       format='%(asctime)s - %(levelname)s - %(message)s'
+   )
+
+   def safe_convert(library_name, **kwargs):
+       """Safely convert library with comprehensive error handling."""
+       try:
+           logging.info(f"Starting conversion of {library_name}")
+           
+           result = make(library_name=library_name, **kwargs)
+           
+           if result:
+               logging.info(f"✅ {library_name} converted successfully: {result}")
+               return result
+           else:
+               logging.error(f"❌ {library_name} conversion failed")
+               return None
+               
+       except ImportError as e:
+           logging.error(f"❌ Import error for {library_name}: {e}")
+           return None
+       except PermissionError as e:
+           logging.error(f"❌ Permission error for {library_name}: {e}")
+           return None
+       except Exception as e:
+           logging.error(f"❌ Unexpected error for {library_name}: {e}")
+           return None
+
+   # Usage
+   result = safe_convert("numpy", output_path="./numpy_docs")
+   if result:
+       print(f"Conversion completed: {result}")
+
+Integration Examples
+-------------------
+
+GitHub Actions Workflow
+~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: yaml
+
+   name: Convert Documentation
+   on:
+     push:
+       branches: [ main ]
+     pull_request:
+       branches: [ main ]
+
+   jobs:
+     convert-docs:
+       runs-on: ubuntu-latest
+       steps:
+       - uses: actions/checkout@v3
+       
+       - name: Set up Python
+         uses: actions/setup-python@v4
+         with:
+           python-version: '3.9'
+       
+       - name: Install dependencies
+         run: |
+           python -m pip install --upgrade pip
+           pip install contextmaker
+       
+       - name: Convert documentation
+         run: |
+           contextmaker numpy --output ./docs/numpy
+           contextmaker pandas --output ./docs/pandas
+           contextmaker matplotlib --output ./docs/matplotlib
+       
+       - name: Upload artifacts
+         uses: actions/upload-artifact@v3
+         with:
+           name: documentation
+           path: ./docs/
+
+Docker Integration
+~~~~~~~~~~~~~~~~~
+
+.. code-block:: dockerfile
+
+   FROM python:3.9-slim
+
+   # Install system dependencies
+   RUN apt-get update && apt-get install -y \
+       make \
+       && rm -rf /var/lib/apt/lists/*
+
+   # Install Python dependencies
+   RUN pip install contextmaker
+
+   # Set working directory
+   WORKDIR /app
+
+   # Copy script
+   COPY convert_docs.py .
 
    # Run conversion
-   main()
+   CMD ["python", "convert_docs.py"]
 
-Example 14: Using individual converters
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: python
-
-   from contextmaker.converters.sphinx_converter import convert_sphinx_docs_to_txt
-   from contextmaker.converters.nonsphinx_converter import create_final_markdown
-
-   # Convert Sphinx docs
-   success = convert_sphinx_docs_to_txt('/path/to/docs', './output')
-
-   # Convert other formats
-   create_final_markdown('/path/to/source', './output')
-
-Example 15: Custom markdown processing
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+And the corresponding Python script:
 
 .. code-block:: python
 
-   from contextmaker.converters.markdown_builder import build_html_and_convert_to_text
+   #!/usr/bin/env python3
+   """Docker container script for converting documentation."""
 
-   # Build HTML and convert to text
-   success = build_html_and_convert_to_text(
-       '/path/to/docs', 
-       '/path/to/docs/conf.py', 
-       '/path/to/src', 
-       './output.txt'
-   ) 
+   import os
+   import sys
+   from contextmaker.contextmaker import make
+
+   def main():
+       """Main conversion function."""
+       libraries = os.environ.get('LIBRARIES', 'numpy,pandas').split(',')
+       output_dir = os.environ.get('OUTPUT_DIR', '/app/docs')
+       
+       print(f"Converting libraries: {libraries}")
+       print(f"Output directory: {output_dir}")
+       
+       for lib in libraries:
+           lib = lib.strip()
+           print(f"\nConverting {lib}...")
+           
+           try:
+               result = make(
+                   library_name=lib,
+                   output_path=os.path.join(output_dir, lib),
+                   extension="txt"
+               )
+               
+               if result:
+                   print(f"✅ {lib} converted successfully")
+               else:
+                   print(f"❌ {lib} conversion failed")
+                   
+           except Exception as e:
+               print(f"❌ Error converting {lib}: {e}")
+       
+       print("\nConversion completed!")
+
+   if __name__ == "__main__":
+       main()
+
+Real-World Scenarios
+-------------------
+
+Scientific Research Library
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Converting documentation for a scientific computing library:
+
+.. code-block:: bash
+
+   # Clone the library
+   git clone https://github.com/scientific/mylib.git
+   cd mylib
+
+   # Convert documentation
+   contextmaker mylib --input_path . --output ../mylib_docs --extension txt
+
+   # Check the output
+   ls -la ../mylib_docs/
+   head -20 ../mylib_docs/mylib.txt
+
+Legacy Documentation Modernization
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Converting old documentation to modern formats:
+
+.. code-block:: bash
+
+   # Convert old Sphinx docs
+   contextmaker legacy_lib --input_path /path/to/old/docs --output ./modern_docs
+
+   # Convert to markdown for GitHub
+   contextmaker legacy_lib --input_path /path/to/old/docs --output ./github_docs --extension md
+
+API Documentation Generation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Generating API docs from source code:
+
+.. code-block:: bash
+
+   # Convert library without documentation
+   contextmaker mylib --input_path /path/to/source --output ./api_docs
+
+   # This will extract docstrings and create API documentation
+
+Performance Optimization
+-----------------------
+
+Large Library Processing
+~~~~~~~~~~~~~~~~~~~~~~~
+
+For very large libraries, use rough mode to save memory:
+
+.. code-block:: bash
+
+   # Process large library with rough mode
+   contextmaker large_lib --output large_lib.txt --rough
+
+   # Monitor memory usage
+   contextmaker large_lib --output large_lib.txt --rough &
+   top -p $!
+
+Memory-Efficient Batch Processing
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+   import gc
+   from contextmaker.contextmaker import make
+
+   libraries = ["numpy", "pandas", "matplotlib", "scipy", "scikit-learn"]
+
+   for lib in libraries:
+       print(f"Converting {lib}...")
+       
+       try:
+           result = make(library_name=lib, output_path=f"./docs/{lib}")
+           if result:
+               print(f"✅ {lib} completed")
+           else:
+               print(f"❌ {lib} failed")
+       except Exception as e:
+           print(f"❌ {lib} error: {e}")
+       
+       # Force garbage collection between conversions
+       gc.collect()
+       print(f"Memory freed after {lib}")
+
+Troubleshooting Examples
+------------------------
+
+Debug Conversion Issues
+~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: bash
+
+   # Enable verbose logging
+   contextmaker problem_lib --verbose
+
+   # Check logs in real-time
+   tail -f logs/conversion.log
+
+   # Test with minimal parameters
+   contextmaker problem_lib --output test.txt --rough
+
+Handle Permission Issues
+~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: bash
+
+   # Check permissions
+   ls -la /path/to/library
+   ls -la /path/to/output
+
+   # Fix permissions if needed
+   chmod -R 755 /path/to/library
+   chmod -R 755 /path/to/output
+
+   # Use sudo if necessary (be careful!)
+   sudo contextmaker library_name --output /path/to/output
+
+Next Steps
+----------
+
+Now that you've seen practical examples:
+
+- Try converting a library you use regularly
+- Experiment with different output formats
+- Set up batch processing for multiple libraries
+- Integrate ContextMaker into your CI/CD pipeline
+- Check the :doc:`api` for advanced programmatic usage
+- Read :doc:`troubleshooting` for common issues and solutions 

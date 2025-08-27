@@ -30,25 +30,25 @@ class SphinxMakefileConverter:
         Returns:
             Tuple of (output_file_path, success)
         """
-        logger.info("🔄 Converting Sphinx documentation using Makefile...")
+        logger.info("Converting Sphinx documentation using Makefile...")
         
         # Find Sphinx source directory
         sphinx_source = detector.find_sphinx_source(input_path)
         if not sphinx_source:
-            logger.error("❌ No valid sphinx source folder found (conf.py and index.rst in docs/source, docs, doc/source, or doc/)")
+            logger.error("No valid sphinx source folder found (conf.py and index.rst in docs/source, docs, doc/source, or doc/)")
             return None, False
 
         # Check if 'make' command is available
         if not shutil.which("make"):
-            logger.error("❌ 'make' command not found on this system.")
-            logger.error("📋 Sphinx Makefile functionality requires GNU Make to be installed.")
+            logger.error("'make' command not found on this system.")
+            logger.error("Sphinx Makefile functionality requires GNU Make to be installed.")
             return None, False
 
         try:
             # Build Sphinx documentation using Makefile
             build_dir = self._build_via_makefile(sphinx_source, input_path)
             if not build_dir:
-                logger.error("❌ Failed to build Sphinx documentation using Makefile")
+                logger.error("Failed to build Sphinx documentation using Makefile")
                 return None, False
             
             # Convert the built documentation to markdown
@@ -62,19 +62,19 @@ class SphinxMakefileConverter:
                 logger.warning(f"Could not clean up build directory: {e}")
             
             if success and os.path.exists(markdown_output):
-                logger.info(f"✅ Markdown file created successfully: {markdown_output}")
+                logger.info(f"Markdown file created successfully: {markdown_output}")
                 return markdown_output, True
             else:
                 logger.warning(f"Markdown file not found at expected path: {markdown_output}")
                 return None, False
                 
         except Exception as e:
-            logger.error(f"❌ Sphinx Makefile conversion failed: {e}")
+            logger.error(f"Sphinx Makefile conversion failed: {e}")
             return None, False
 
     def _build_via_makefile(self, sphinx_source: str, source_root: str) -> str | None:
         """Build Sphinx documentation using Makefile."""
-        logger.info(f"🔧 Building Sphinx documentation using Makefile from: {sphinx_source}")
+        logger.info(f"Building Sphinx documentation using Makefile from: {sphinx_source}")
         
         try:
             # Create a temporary build directory
@@ -92,7 +92,7 @@ class SphinxMakefileConverter:
             ]
             
             for cmd in make_commands:
-                logger.info(f"🔧 Running: {' '.join(cmd)}")
+                logger.info(f"Running: {' '.join(cmd)}")
                 result = subprocess.run(
                     cmd,
                     capture_output=True,
@@ -101,7 +101,7 @@ class SphinxMakefileConverter:
                 )
                 
                 if result.returncode != 0:
-                    logger.warning(f"⚠️ Command {' '.join(cmd)} failed with return code: {result.returncode}")
+                    logger.warning(f"Command {' '.join(cmd)} failed with return code: {result.returncode}")
                     if result.stderr:
                         logger.warning(f"stderr: {result.stderr}")
                     # Continue anyway, as some files might have been generated
@@ -112,14 +112,14 @@ class SphinxMakefileConverter:
             # Check if HTML files were generated
             html_dir = os.path.join(sphinx_source, "_build", "html")
             if os.path.exists(html_dir):
-                logger.info(f"✅ HTML build successful! Output in: {html_dir}")
+                logger.info(f"HTML build successful! Output in: {html_dir}")
                 return html_dir
             else:
-                logger.warning("⚠️ HTML build directory not found")
+                logger.warning("HTML build directory not found")
                 return None
                 
         except Exception as e:
-            logger.error(f"❌ Error building Sphinx documentation: {e}")
+            logger.error(f"Error building Sphinx documentation: {e}")
             return None
 
     def _combine_markdown_files(self, build_dir: str, output_file: str, library_name: str, sphinx_source: str) -> bool:
@@ -133,10 +133,10 @@ class SphinxMakefileConverter:
                         html_files.append(os.path.join(root, file))
             
             if not html_files:
-                logger.warning("⚠️ No HTML files found in build directory")
+                logger.warning("No HTML files found in build directory")
                 return False
             
-            logger.info(f"📄 Found {len(html_files)} HTML files")
+            logger.info(f"Found {len(html_files)} HTML files")
             
             # Create output directory
             os.makedirs(os.path.dirname(output_file), exist_ok=True)
@@ -168,11 +168,11 @@ class SphinxMakefileConverter:
                     
                     out.write("\n\n")
             
-            logger.info(f"✅ Combined markdown written to {output_file}")
+            logger.info(f"Combined markdown written to {output_file}")
             return True
             
         except Exception as e:
-            logger.error(f"❌ Failed to combine markdown files: {e}")
+            logger.error(f"Failed to combine markdown files: {e}")
             return False
 
     def _html_to_markdown(self, html_content: str) -> str:

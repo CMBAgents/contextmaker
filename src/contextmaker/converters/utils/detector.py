@@ -27,7 +27,7 @@ def find_sphinx_makefile(lib_path: str) -> str | None:
     """
     # Check if 'make' command is available before searching for Makefiles
     if not shutil.which("make"):
-        logger.debug("📋 'make' command not available, skipping Makefile search")
+        logger.debug("'make' command not available, skipping Makefile search")
         return None
     
     for root, dirs, files in os.walk(lib_path):
@@ -42,7 +42,7 @@ def find_sphinx_makefile(lib_path: str) -> str | None:
                         content = f.read()
                     # Check if this Makefile contains Sphinx-related targets
                     if any(target in content.lower() for target in ['sphinx', 'html', 'docs', 'build']):
-                        logger.info(f"📋 Found Sphinx Makefile at: {makefile_path}")
+                        logger.info(f"Found Sphinx Makefile at: {makefile_path}")
                         return root
                 except Exception as e:
                     logger.debug(f"Could not read Makefile {makefile_path}: {e}")
@@ -84,16 +84,16 @@ def get_best_sphinx_method(lib_path: str) -> tuple[str, str | None]:
     
     if makefile_dir:
         if shutil.which("make"):
-            logger.info("📋 Sphinx Makefile found and 'make' is available - using highest priority method")
+            logger.info("Sphinx Makefile found and 'make' is available - using highest priority method")
             return 'sphinx_makefile', makefile_dir
         else:
-            logger.info("📋 Sphinx Makefile found but 'make' not available - will use direct Sphinx building")
+            logger.info("Sphinx Makefile found but 'make' not available - will use direct Sphinx building")
             return 'sphinx_direct', makefile_dir
     
     # Check for standard Sphinx documentation
     sphinx_source = find_sphinx_source(lib_path)
     if sphinx_source:
-        logger.info("📚 Standard Sphinx documentation found")
+        logger.info("Standard Sphinx documentation found")
         return 'sphinx_standard', sphinx_source
     
     return 'none', None
@@ -123,30 +123,30 @@ def find_format(lib_path: str) -> str:
     
     if makefile_dir:
         if shutil.which("make"):
-            logger.info("📋 Detected Sphinx Makefile - using highest priority method.")
+            logger.info("Detected Sphinx Makefile - using highest priority method.")
             return 'sphinx_makefile'
         else:
-            logger.info("📋 Sphinx Makefile found but 'make' command not available.")
-            logger.info("💡 Install GNU Make to use the highest priority Makefile method.")
-            logger.info("📚 Falling back to standard Sphinx method.")
+            logger.info("Sphinx Makefile found but 'make' command not available.")
+            logger.info("Install GNU Make to use the highest priority Makefile method.")
+            logger.info("Falling back to standard Sphinx method.")
             # Continue to check for standard Sphinx documentation
     
     # Check for standard Sphinx documentation
     if has_documentation(lib_path):
-        logger.info("📚 Detected Sphinx-style documentation.")
+        logger.info("Detected Sphinx-style documentation.")
         return 'sphinx'
     elif has_notebook(lib_path):
-        logger.info("📒 Detected Jupyter notebooks.")
+        logger.info("Detected Jupyter notebooks.")
         return 'notebook'
     elif has_docstrings(lib_path):
-        logger.info("📄 Detected inline docstrings.")
+        logger.info("Detected inline docstrings.")
         return 'docstrings'
     elif has_source(lib_path):
-        logger.info("💻 Detected raw source code.")
+        logger.info("Detected raw source code.")
         return 'source'
     else:
         # For installed packages without documentation, try to extract docstrings from source
-        logger.info("📦 Detected installed package, extracting docstrings from source code.")
+        logger.info("Detected installed package, extracting docstrings from source code.")
         return 'docstrings'
 
 
@@ -325,7 +325,7 @@ def find_library_path(library_name: str) -> str | None:
     
     for path in possible_paths:
         if os.path.exists(path) and os.path.isdir(path):
-            logger.info(f"📚 Found library '{library_name}' at: {path}")
+            logger.info(f"Found library '{library_name}' at: {path}")
             return path
     
     # Try to find using pip show
@@ -338,12 +338,12 @@ def find_library_path(library_name: str) -> str | None:
                     location = line.split(':', 1)[1].strip()
                     library_path = os.path.join(location, library_name)
                     if os.path.exists(library_path):
-                        logger.info(f"📚 Found library '{library_name}' via pip at: {library_path}")
+                        logger.info(f"Found library '{library_name}' via pip at: {library_path}")
                         return library_path
     except Exception:
         pass
     
-    logger.warning(f"📚 Library '{library_name}' not found in common locations")
+    logger.warning(f"Library '{library_name}' not found in common locations")
     return None
 
 

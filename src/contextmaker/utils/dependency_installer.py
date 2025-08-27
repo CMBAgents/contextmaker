@@ -69,7 +69,7 @@ class UniversalDependencyInstaller:
     def install_package(self, package_name: str) -> bool:
         """Install a single package via pip."""
         try:
-            logger.info(f"{package_name} → Manquant → Installation...")
+            logger.info(f"{package_name} → Missing → Installing...")
             
             result = subprocess.run(
                 [sys.executable, "-m", "pip", "install", package_name],
@@ -79,20 +79,20 @@ class UniversalDependencyInstaller:
             )
             
             if result.returncode == 0:
-                logger.info(f"{package_name} → Installé avec succès")
+                logger.info(f"{package_name} → Installed successfully")
                 self.installed_packages.add(package_name)
                 return True
             else:
-                logger.warning(f"{package_name} → Échec d'installation: {result.stderr}")
+                logger.warning(f"{package_name} → Installation failed: {result.stderr}")
                 self.failed_packages.add(package_name)
                 return False
                 
         except subprocess.TimeoutExpired:
-            logger.warning(f"{package_name} → Échec d'installation: Timeout")
+            logger.warning(f"{package_name} → Installation failed: Timeout")
             self.failed_packages.add(package_name)
             return False
         except Exception as e:
-            logger.warning(f"{package_name} → Échec d'installation: {e}")
+            logger.warning(f"{package_name} → Installation failed: {e}")
             self.failed_packages.add(package_name)
             return False
     
@@ -103,11 +103,11 @@ class UniversalDependencyInstaller:
         Returns:
             Dict with 'installed' and 'failed' package lists
         """
-        logger.info("Vérification des dépendances...")
+        logger.info("Checking dependencies...")
         
         # Check if pip is available
         if not self.check_pip_available():
-            logger.error("pip n'est pas disponible. Installation automatique impossible.")
+            logger.error("pip is not available. Automatic installation impossible.")
             return {"installed": [], "failed": self.required_packages}
         
         # Check required packages
@@ -115,21 +115,21 @@ class UniversalDependencyInstaller:
             if not self.is_package_installed(package):
                 self.install_package(package)
             else:
-                logger.info(f"{package} → Déjà installé")
+                logger.info(f"{package} → Already installed")
         
         # Check optional packages
         for package in self.optional_packages:
             if not self.is_package_installed(package):
                 self.install_package(package)
             else:
-                logger.info(f"{package} → Déjà installé")
+                logger.info(f"{package} → Already installed")
         
         # Summary
         if self.installed_packages:
-            logger.info(f"Packages installés: {', '.join(self.installed_packages)}")
+            logger.info(f"Installed packages: {', '.join(self.installed_packages)}")
         
         if self.failed_packages:
-            logger.warning(f"Packages en échec: {', '.join(self.failed_packages)}")
+            logger.warning(f"Failed packages: {', '.join(self.failed_packages)}")
         
         return {
             "installed": list(self.installed_packages),
@@ -149,10 +149,10 @@ class UniversalDependencyInstaller:
         try:
             # Try to import sphinx
             import sphinx
-            logger.info("Sphinx disponible")
+            logger.info("Sphinx available")
             return True
         except ImportError:
-            logger.warning("Sphinx non disponible, tentative d'installation...")
+            logger.warning("Sphinx not available, attempting installation...")
             return self.install_package("sphinx")
     
     def ensure_library_installed(self, library_name: str) -> bool:
@@ -167,10 +167,10 @@ class UniversalDependencyInstaller:
         """
         try:
             importlib.import_module(library_name)
-            logger.info(f"Bibliothèque {library_name} disponible")
+            logger.info(f"Library {library_name} available")
             return True
         except ImportError:
-            logger.info(f"Bibliothèque {library_name} non disponible, continuation sans installation")
+            logger.info(f"Library {library_name} not available, continuing without installation")
             return False
 
 

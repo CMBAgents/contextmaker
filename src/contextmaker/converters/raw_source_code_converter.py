@@ -25,7 +25,7 @@ class RawSourceCodeConverter:
         Returns:
             Tuple of (output_file_path, success)
         """
-        logger.info("🔄 Creating documentation from raw source code...")
+        logger.info("Creating documentation from raw source code...")
         
         try:
             # Check if we have Python source files
@@ -39,10 +39,10 @@ class RawSourceCodeConverter:
                         py_files.append(os.path.join(root, file))
             
             if not py_files:
-                logger.warning("⚠️ No Python source files found")
+                logger.warning("No Python source files found")
                 return None, False
             
-            logger.info(f"🚀 Found {len(py_files)} Python source files! Creating documentation from source...")
+            logger.info(f"Found {len(py_files)} Python source files! Creating documentation from source...")
             
             # Create output file directly from source
             output_file = os.path.join(output_path, f"{library_name}.md")
@@ -87,13 +87,13 @@ class RawSourceCodeConverter:
                 with open(output_file, 'w', encoding='utf-8') as f:
                     f.write(''.join(source_content))
                 
-                logger.info(f"✅ Documentation created from raw source code: {output_file}")
+                logger.info(f"Documentation created from raw source code: {output_file}")
                 return output_file, True
                 
             except Exception as e:
-                logger.warning(f"⚠️ Failed to create documentation from source code: {e}")
+                logger.warning(f"Failed to create documentation from source code: {e}")
                 return None, False
                 
         except Exception as e:
-            logger.warning(f"⚠️ Raw source code fallback failed: {e}")
+            logger.warning(f"Raw source code fallback failed: {e}")
             return None, False
