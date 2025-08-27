@@ -368,9 +368,15 @@ def make(library_name, output_path=None, input_path=None, extension='txt', rough
             logger.info(f"Conversion completed successfully. Output: {output_file}")
             
             # Ajouter automatiquement les notebooks si ils existent
-            if detector.has_notebook(input_path):
+            notebooks_found = detector.has_notebook(input_path)
+            logger.info(f"Notebook detection result: {notebooks_found}")
+            if notebooks_found:
                 logger.info("Automatically adding notebooks to documentation...")
-                _add_notebooks_to_file(input_path, output_file)
+                try:
+                    _add_notebooks_to_file(input_path, output_file)
+                    logger.info("Notebooks added successfully to documentation")
+                except Exception as e:
+                    logger.error(f"Failed to add notebooks: {e}")
             
             # Convert to text if needed
             if extension == 'txt' and not output_file.endswith('.txt'):

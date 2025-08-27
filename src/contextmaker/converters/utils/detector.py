@@ -1,6 +1,14 @@
 """
 Detection utilities for converters.
 Handles format detection and library path finding.
+
+IMPORTANT: Documentation type detection now allows coexistence of multiple types:
+- Sphinx documentation (highest priority for conversion)
+- Jupyter notebooks (can be added to any documentation type)
+- Python docstrings (can coexist with notebooks)
+- Raw source code (can coexist with notebooks and docstrings)
+
+This enables comprehensive documentation extraction from libraries with mixed content.
 """
 
 import os
@@ -200,8 +208,7 @@ def has_notebook(lib_path: str) -> bool:
     Returns:
         bool: True if at least one .ipynb file exists.
     """
-    if has_documentation(lib_path):
-        return False
+    # Remove the restriction: notebooks can coexist with other documentation types
 
     for root, dirs, files in os.walk(lib_path):
         # Skip common non-relevant directories
@@ -223,7 +230,8 @@ def has_docstrings(lib_path: str) -> bool:
     Returns:
         bool: True if at least one Python file with docstrings exists, else False.
     """
-    if has_documentation(lib_path) or has_notebook(lib_path):
+    # Only exclude if Sphinx documentation exists, allow notebooks and docstrings to coexist
+    if has_documentation(lib_path):
         return False
 
     for root, dirs, files in os.walk(lib_path):
@@ -280,7 +288,8 @@ def has_source(lib_path: str) -> bool:
     Returns:
         bool: True if at least one .py file exists, else False.
     """
-    if has_documentation(lib_path) or has_notebook(lib_path) or has_docstrings(lib_path):
+    # Only exclude if Sphinx documentation exists, allow notebooks, docstrings and source to coexist
+    if has_documentation(lib_path):
         return False
 
     for root, dirs, files in os.walk(lib_path):
