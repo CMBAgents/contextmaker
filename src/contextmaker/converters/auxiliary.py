@@ -506,3 +506,25 @@ def patch_camb_sys_exit(camb_dir: str):
                     fullpath = os.path.join(dirpath, filename)
                     if should_patch(fullpath):
                         patch_sys_exit_in_file(fullpath)
+
+
+def markdown_to_text(md_path, txt_path):
+    """
+    Convert a Markdown (.md) file to plain text (.txt) using markdown and html2text.
+    Args:
+        md_path (str): Path to the input Markdown file.
+        txt_path (str): Path to the output text file.
+    """
+    try:
+        import markdown
+        import html2text
+    except ImportError:
+        logger.error("markdown and html2text packages are required for Markdown to text conversion.")
+        return
+    with open(md_path, "r", encoding="utf-8") as f:
+        md_content = f.read()
+    html = markdown.markdown(md_content)
+    text = html2text.html2text(html)
+    with open(txt_path, "w", encoding="utf-8") as f:
+        f.write(text)
+    logger.info(f"Converted {md_path} to plain text at {txt_path}")
