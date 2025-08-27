@@ -61,7 +61,7 @@ try:
         format="%(asctime)s [%(levelname)s] %(message)s",
         handlers=[
             logging.StreamHandler(sys.stdout),
-            logging.FileHandler(log_file_path)
+            logging.FileHandler(log_file_path, mode='a', encoding='utf-8')
         ],
         force=True  # Force reconfiguration
     )
@@ -81,7 +81,7 @@ except Exception as e:
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setFormatter(formatter)
     
-    file_handler = logging.FileHandler(log_file_path)
+    file_handler = logging.FileHandler(log_file_path, mode='a', encoding='utf-8')
     file_handler.setFormatter(formatter)
     
     # Add handlers
@@ -90,17 +90,37 @@ except Exception as e:
 
 # Get logger for this module
 logger = logging.getLogger(__name__)
+
+# Ensure all loggers propagate to root logger
+logging.getLogger().setLevel(logging.INFO)
+for name in logging.root.manager.loggerDict:
+    logging.getLogger(name).propagate = True
+    logging.getLogger(name).handlers = []  # Remove duplicate handlers
+
 ### End of logger setup ###
 
 ### Intelligent utility functions ###
 def _add_notebooks_to_file(input_path, output_file):
     """Add notebook content to an existing file."""
-    from contextmaker.converters.utils import find_notebooks_in_doc_dirs, convert_notebook
+    try:
+        # Try relative import first
+        from .converters.utils import find_notebooks_in_doc_dirs, convert_notebook
+    except ImportError:
+        try:
+            # Fallback to absolute import
+            from contextmaker.converters.utils import find_notebooks_in_doc_dirs, convert_notebook
+        except ImportError:
+            # Final fallback: direct import from the file
+            import sys
+            # Get the path to the utils module
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            utils_dir = os.path.join(current_dir, "converters", "utils")
+            if utils_dir not in sys.path:
+                sys.path.insert(0, utils_dir)
+            from notebook_utils import find_notebooks_in_doc_dirs, convert_notebook
     
     notebooks_found = find_notebooks_in_doc_dirs(input_path)
     if notebooks_found:
-        logger.info(f"Found {len(notebooks_found)} notebooks, appending to documentation...")
-        
         # Read the current content
         with open(output_file, 'r', encoding='utf-8') as f:
             current_content = f.read()
@@ -124,7 +144,6 @@ def _add_notebooks_to_file(input_path, output_file):
             # Write back with notebooks
             with open(output_file, 'w', encoding='utf-8') as f:
                 f.write(current_content + ''.join(notebook_content))
-            logger.info(f"Added {len(notebooks_found)} notebooks to documentation")
 
 def _convert_to_text(markdown_file):
     """Convert markdown file to text and clean up."""
@@ -369,12 +388,11 @@ def make(library_name, output_path=None, input_path=None, extension='txt', rough
             
             # Ajouter automatiquement les notebooks si ils existent
             notebooks_found = detector.has_notebook(input_path)
-            logger.info(f"Notebook detection result: {notebooks_found}")
+            logger.info(f"Notebooks found: {notebooks_found}")
             if notebooks_found:
-                logger.info("Automatically adding notebooks to documentation...")
                 try:
                     _add_notebooks_to_file(input_path, output_file)
-                    logger.info("Notebooks added successfully to documentation")
+                    logger.info("Notebooks added successfully")
                 except Exception as e:
                     logger.error(f"Failed to add notebooks: {e}")
             
