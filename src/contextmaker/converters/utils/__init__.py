@@ -21,5 +21,8 @@ __all__ = [
     'find_notebooks_in_doc_dirs',
     'find_all_notebooks_recursive',
     'convert_notebook',
-    'append_notebook_markdown'
+    'append_notebook_markdown',
+    'aggregate_camb_text_files',
+    'markdown_builder',
+    '_is_camb_library'
 ]

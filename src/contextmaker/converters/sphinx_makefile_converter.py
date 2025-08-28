@@ -32,6 +32,48 @@ class SphinxMakefileConverter:
         """
         logger.info("Converting Sphinx documentation using Makefile...")
         
+        # Special handling for CAMB: use the integrated markdown_builder
+        if library_name.lower() == "camb":
+            logger.info("CAMB detected: using integrated markdown_builder...")
+            try:
+                # Try multiple import strategies
+                camb_markdown_builder = None
+                try:
+                    from .utils.markdown_builder import main as camb_markdown_builder
+                except ImportError:
+                    try:
+                        import sys
+                        sys.path.append(os.path.join(os.path.dirname(__file__), 'utils'))
+                        from markdown_builder import main as camb_markdown_builder
+                    except ImportError:
+                        # Last resort: direct import
+                        import importlib.util
+                        spec = importlib.util.spec_from_file_location(
+                            "markdown_builder",
+                            os.path.join(os.path.dirname(__file__), 'utils', 'markdown_builder.py')
+                        )
+                        if spec and spec.loader:
+                            markdown_builder_module = importlib.util.module_from_spec(spec)
+                            spec.loader.exec_module(markdown_builder_module)
+                            camb_markdown_builder = markdown_builder_module.main
+                
+                if camb_markdown_builder:
+                    output_file = os.path.join(output_path, f"{library_name}.md")
+                    
+                    # Call the CAMB markdown builder
+                    result = camb_markdown_builder(input_path)
+                    if result:
+                        # Copy the generated file to our output location
+                        shutil.copy2(result, output_file)
+                        logger.info(f"CAMB documentation generated successfully using markdown_builder: {output_file}")
+                        return output_file, True
+                    else:
+                        logger.warning("CAMB markdown_builder failed, falling back to standard Sphinx method")
+                else:
+                    logger.warning("Could not import CAMB markdown_builder, falling back to standard Sphinx method")
+            except Exception as e:
+                logger.warning(f"CAMB markdown_builder failed: {e}, falling back to standard Sphinx method")
+        
         # Find Sphinx source directory
         sphinx_source = detector.find_sphinx_source(input_path)
         if not sphinx_source:
