@@ -165,12 +165,16 @@ class UniversalDependencyInstaller:
         Returns:
             True if library is available, False otherwise
         """
+        logger.info(f"Checking library: {library_name}")
         try:
             importlib.import_module(library_name)
             logger.info(f"Library {library_name} available")
             return True
-        except ImportError:
-            logger.info(f"Library {library_name} not available, continuing without installation")
+        except ImportError as e:
+            logger.info(f"Library {library_name} not available (ImportError: {e}), continuing without installation")
+            return False
+        except Exception as e:
+            logger.warning(f"Unexpected error importing {library_name}: {e}")
             return False
 
 

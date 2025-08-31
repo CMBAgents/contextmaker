@@ -93,9 +93,16 @@ logger = logging.getLogger(__name__)
 
 # Ensure all loggers propagate to root logger
 logging.getLogger().setLevel(logging.INFO)
+# Don't remove handlers from other loggers - this breaks NumPy and other modules
 for name in logging.root.manager.loggerDict:
     logging.getLogger(name).propagate = True
-    logging.getLogger(name).handlers = []  # Remove duplicate handlers
+    # Only remove handlers if they're duplicates of our own
+    # logging.getLogger(name).handlers = []  # This was breaking NumPy logging
+
+# Filter out noisy third-party loggers
+logging.getLogger('numexpr').setLevel(logging.WARNING)
+logging.getLogger('numpy').setLevel(logging.WARNING)
+logging.getLogger('pandas').setLevel(logging.WARNING)
 
 ### End of logger setup ###
 
@@ -256,10 +263,19 @@ def make(library_name, output_path=None, input_path=None, extension='txt', rough
             logger.error(f"Import error after dependency installation: {e}")
             return None
         
-        # ÉTAPE 3: Vérification de la bibliothèque cible
-        library_available = dependency_installer.ensure_library_installed(library_name)
-        if not library_available:
-            logger.info(f"Processing documentation for '{library_name}' without the library being installed.")
+        # ÉTAPE 3: Vérification de la bibliothèque cible (optionnelle)
+        # Skip library check for problematic libraries like cmbagent
+        if library_name.lower() in ['cmbagent']:
+            logger.info(f"Skipping library check for {library_name} (known to cause issues)")
+            library_available = False
+        else:
+            try:
+                library_available = dependency_installer.ensure_library_installed(library_name)
+                if not library_available:
+                    logger.info(f"Processing documentation for '{library_name}' without the library being installed.")
+            except Exception as e:
+                logger.warning(f"Library check failed for {library_name}: {e}, continuing without it")
+                library_available = False
         
         # ÉTAPE 4: Détermination du chemin d'entrée
         if input_path:
