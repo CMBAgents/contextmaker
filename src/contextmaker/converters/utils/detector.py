@@ -25,8 +25,9 @@ logger = logging.getLogger(__name__)
 
 def find_sphinx_makefile(lib_path: str) -> str | None:
     """
-    Recursively search for a Sphinx Makefile in the library directory.
-    Prioritizes documentation directories (doc/, docs/) over root directory.
+    Search for a Sphinx Makefile in the library directory.
+    Only looks in documentation directories (doc/, docs/, documentation/) and root directory.
+    Excludes Makefiles in subdirectories like tools/, test/, etc.
     
     Args:
         lib_path (str): Path to the root of the library.
@@ -57,24 +58,19 @@ def find_sphinx_makefile(lib_path: str) -> str | None:
                     logger.debug(f"Could not read Makefile {makefile_path}: {e}")
                     continue
     
-    # If no documentation Makefile found, search recursively
-    for root, dirs, files in os.walk(lib_path):
-        # Skip common non-relevant directories for performance
-        dirs[:] = [d for d in dirs if d not in ['.git', '__pycache__', 'build', 'dist', '.pytest_cache', 'node_modules', '.venv', 'venv']]
-        
-        for file in files:
-            if file.lower() == 'makefile':
-                makefile_path = os.path.join(root, file)
-                try:
-                    with open(makefile_path, 'r', encoding='utf-8') as f:
-                        content = f.read()
-                    # Check if this Makefile contains Sphinx-related targets
-                    if any(target in content.lower() for target in ['sphinx', 'html', 'docs', 'build']):
-                        logger.info(f"Found Sphinx Makefile at: {makefile_path}")
-                        return root
-                except Exception as e:
-                    logger.debug(f"Could not read Makefile {makefile_path}: {e}")
-                    continue
+    # Check root directory only (not subdirectories)
+    root_makefile = os.path.join(lib_path, 'Makefile')
+    if os.path.exists(root_makefile):
+        try:
+            with open(root_makefile, 'r', encoding='utf-8') as f:
+                content = f.read()
+            # Check if this Makefile contains Sphinx-related targets
+            if any(target in content.lower() for target in ['sphinx', 'html', 'docs', 'build']):
+                logger.info(f"Found Sphinx Makefile in root directory: {root_makefile}")
+                return lib_path
+        except Exception as e:
+            logger.debug(f"Could not read Makefile {root_makefile}: {e}")
+    
     return None
 
 
