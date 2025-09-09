@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 def find_sphinx_makefile(lib_path: str) -> str | None:
     """
     Recursively search for a Sphinx Makefile in the library directory.
+    Prioritizes documentation directories (doc/, docs/) over root directory.
     
     Args:
         lib_path (str): Path to the root of the library.
@@ -38,6 +39,25 @@ def find_sphinx_makefile(lib_path: str) -> str | None:
         logger.debug("'make' command not available, skipping Makefile search")
         return None
     
+    # First, check documentation directories specifically
+    doc_dirs = ['doc', 'docs', 'documentation']
+    for doc_dir in doc_dirs:
+        doc_path = os.path.join(lib_path, doc_dir)
+        if os.path.exists(doc_path):
+            makefile_path = os.path.join(doc_path, 'Makefile')
+            if os.path.exists(makefile_path):
+                try:
+                    with open(makefile_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    # Check if this Makefile contains Sphinx-related targets
+                    if any(target in content.lower() for target in ['sphinx', 'html', 'docs', 'build']):
+                        logger.info(f"Found Sphinx Makefile in documentation directory: {makefile_path}")
+                        return doc_path
+                except Exception as e:
+                    logger.debug(f"Could not read Makefile {makefile_path}: {e}")
+                    continue
+    
+    # If no documentation Makefile found, search recursively
     for root, dirs, files in os.walk(lib_path):
         # Skip common non-relevant directories for performance
         dirs[:] = [d for d in dirs if d not in ['.git', '__pycache__', 'build', 'dist', '.pytest_cache', 'node_modules', '.venv', 'venv']]
@@ -568,11 +588,10 @@ def _extract_camb_toctree_order(index_rst_path: str) -> list:
 def _is_camb_library(lib_path: str) -> bool:
     """Check if the library is CAMB by looking for characteristic files/directories."""
     try:
-        # Check for CAMB-specific files/directories
+        # Check for CAMB-specific files/directories (more specific indicators)
         camb_indicators = [
             os.path.join(lib_path, "camb"),
             os.path.join(lib_path, "docs", "markdown_builder.py"),
-            os.path.join(lib_path, "setup.py"),  # CAMB has a setup.py
             os.path.join(lib_path, "camblib.so"),  # Fortran library
             os.path.join(lib_path, "cambdll.dll")  # Windows version
         ]

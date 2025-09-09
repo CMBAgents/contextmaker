@@ -75,7 +75,22 @@ class SphinxMakefileConverter:
                 logger.warning(f"CAMB markdown_builder failed: {e}, falling back to standard Sphinx method")
         
         # Find Sphinx source directory
-        sphinx_source = detector.find_sphinx_source(input_path)
+        # First try to find it relative to the Makefile directory
+        makefile_dir = detector.find_sphinx_makefile(input_path)
+        sphinx_source = None
+        
+        if makefile_dir:
+            # If Makefile is in doc/, look for source in doc/source/
+            if makefile_dir.endswith('doc'):
+                potential_source = os.path.join(makefile_dir, 'source')
+                if os.path.exists(os.path.join(potential_source, 'conf.py')) and os.path.exists(os.path.join(potential_source, 'index.rst')):
+                    sphinx_source = potential_source
+                    logger.info(f"Found Sphinx source directory relative to Makefile: {sphinx_source}")
+        
+        # Fallback to standard detection if not found
+        if not sphinx_source:
+            sphinx_source = detector.find_sphinx_source(input_path)
+        
         if not sphinx_source:
             logger.error("No valid sphinx source folder found (conf.py and index.rst in docs/source, docs, doc/source, or doc/)")
             return None, False
@@ -88,7 +103,12 @@ class SphinxMakefileConverter:
 
         try:
             # Build Sphinx documentation using Makefile
-            build_dir = self._build_via_makefile(sphinx_source, input_path)
+            # Use the Makefile directory we found earlier
+            if not makefile_dir:
+                logger.error("Could not find Makefile directory")
+                return None, False
+            
+            build_dir = self._build_via_makefile(makefile_dir, input_path)
             if not build_dir:
                 logger.error("Failed to build Sphinx documentation using Makefile")
                 return None, False
@@ -114,20 +134,16 @@ class SphinxMakefileConverter:
             logger.error(f"Sphinx Makefile conversion failed: {e}")
             return None, False
 
-    def _build_via_makefile(self, sphinx_source: str, source_root: str) -> str | None:
+    def _build_via_makefile(self, makefile_dir: str, source_root: str) -> str | None:
         """Build Sphinx documentation using Makefile."""
-        logger.info(f"Building Sphinx documentation using Makefile from: {sphinx_source}")
+        logger.info(f"Building Sphinx documentation using Makefile from: {makefile_dir}")
         
         try:
             # Create a temporary build directory
             build_dir = tempfile.mkdtemp(prefix="sphinx_makefile_build_")
             logger.info(f"Build directory: {build_dir}")
             
-            # Change to sphinx_source directory to run make
-            original_cwd = os.getcwd()
-            os.chdir(sphinx_source)
-            
-            # Run make clean and make html
+            # Run make clean and make html in the sphinx_source directory
             make_commands = [
                 ["make", "clean"],
                 ["make", "html"]
@@ -139,7 +155,7 @@ class SphinxMakefileConverter:
                     cmd,
                     capture_output=True,
                     text=True,
-                    cwd=sphinx_source
+                    cwd=makefile_dir  # Execute make commands in the directory containing the Makefile
                 )
                 
                 if result.returncode != 0:
@@ -148,16 +164,24 @@ class SphinxMakefileConverter:
                         logger.warning(f"stderr: {result.stderr}")
                     # Continue anyway, as some files might have been generated
             
-            # Restore original working directory
-            os.chdir(original_cwd)
+            # Check if HTML files were generated (try both common build directory names)
+            html_dirs = [
+                os.path.join(makefile_dir, "build", "html"),  # Standard Sphinx build directory
+                os.path.join(makefile_dir, "_build", "html"),  # Alternative build directory
+                os.path.join(makefile_dir, "html")  # Direct html directory
+            ]
             
-            # Check if HTML files were generated
-            html_dir = os.path.join(sphinx_source, "_build", "html")
-            if os.path.exists(html_dir):
+            html_dir = None
+            for potential_dir in html_dirs:
+                if os.path.exists(potential_dir):
+                    html_dir = potential_dir
+                    break
+            
+            if html_dir:
                 logger.info(f"HTML build successful! Output in: {html_dir}")
                 return html_dir
             else:
-                logger.warning("HTML build directory not found")
+                logger.warning("HTML build directory not found in any expected location")
                 return None
                 
         except Exception as e:
