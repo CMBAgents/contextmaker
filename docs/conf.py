@@ -22,8 +22,8 @@ author = 'Chadi Ait Ekioui'
 email = 'chadiaitek2004@gmail.com'
 
 # The full version, including alpha/beta/rc tags
-release = '1.8.7'
-version = '1.8.7'
+release = '1.8.8'
+version = '1.8.8'
 
 # -- General configuration ---------------------------------------------------
 

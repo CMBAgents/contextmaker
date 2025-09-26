@@ -79,6 +79,24 @@ contextmaker pixell --extension md
 contextmaker pixell --output ./pixell_context.txt --rough
 ```
 
+#### Direct Path Usage (NEW)
+
+You can now use ContextMaker with a direct path to a library without specifying the library name:
+
+```bash
+# Use direct path (library name extracted automatically)
+contextmaker --input_path /path/to/your/cloned/library
+
+# Direct path with custom output
+contextmaker --input_path /path/to/your/cloned/library --output ~/my_docs
+
+# Direct path with markdown output
+contextmaker --input_path /path/to/your/cloned/library --extension md
+
+# Direct path with rough mode (save to specific file)
+contextmaker --input_path /path/to/your/cloned/library --output ./library_context.txt --rough
+```
+
 #### Output
 
 - **Default location:** `~/your_context_library/library_name.txt`
@@ -108,6 +126,12 @@ contextmaker.make("pixell", extension="md")
 
 # Save directly to specified file without creating folders (rough mode)
 contextmaker.make("pixell", output_path="./pixell_context.txt", rough=True)
+
+# NEW: Direct path usage (library name extracted automatically)
+contextmaker.make(library_name=None, input_path="/path/to/your/cloned/library")
+
+# Direct path with custom output
+contextmaker.make(library_name=None, input_path="/path/to/your/cloned/library", output_path="/tmp/my_docs")
 ```
 
 ## Examples

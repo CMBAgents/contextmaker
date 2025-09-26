@@ -1,6 +1,6 @@
 [project]
 name = "contextmaker"
-version = "1.8.7"
+version = "1.8.8"
 description = "A simple context builder and converter toolkit"
 readme = "README.md"
 license = { text = "MIT" }

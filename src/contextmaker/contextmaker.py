@@ -16,7 +16,6 @@ except ImportError:
     )
     from converters.utils import detector
     from utils import dependency_installer
-import subprocess
 
 ### Clean logs at startup ###
 def clean_logs_startup():
@@ -107,6 +106,25 @@ logging.getLogger('pandas').setLevel(logging.WARNING)
 ### End of logger setup ###
 
 ### Intelligent utility functions ###
+def _extract_library_name_from_path(input_path):
+    """
+    Extract library name from the input path.
+    
+    Args:
+        input_path (str): Path to the library directory
+        
+    Returns:
+        str: Library name extracted from the path
+    """
+    # Get the basename of the path
+    library_name = os.path.basename(os.path.abspath(input_path))
+    
+    # If the path ends with a slash, get the parent directory name
+    if not library_name:
+        library_name = os.path.basename(os.path.dirname(os.path.abspath(input_path)))
+    
+    return library_name
+
 def _add_notebooks_to_file(input_path, output_file):
     """Add notebook content to an existing file."""
     try:
@@ -194,7 +212,7 @@ def _get_file_size(file_path):
             return f"{size_bytes / 1024:.1f} KB"
         else:
             return f"{size_bytes / (1024 * 1024):.1f} MB"
-    except:
+    except Exception:
         return "Unknown size"
 
 ### Parsing arguments ###
@@ -203,9 +221,9 @@ def parse_args():
     Parse command line arguments.
     """
     parser = argparse.ArgumentParser(
-        description="Convert library documentation to text format. Automatically finds libraries on your system."
+        description="Convert library documentation to text format. Automatically finds libraries on your system or use direct path."
     )
-    parser.add_argument('library_name', help='Name of the library to convert (e.g., "pixell", "numpy")')
+    parser.add_argument('library_name', nargs='?', help='Name of the library to convert (e.g., "pixell", "numpy"). Optional if --input_path is provided.')
     parser.add_argument('--output', '-o', help='Output path (default: ~/contextmaker_output/)')
     parser.add_argument('--input_path', '-i', help='Manual path to library (overrides automatic search)')
     parser.add_argument('--extension', '-e', choices=['txt', 'md'], default='txt', help='Output file extension: txt (default) or md')
@@ -217,9 +235,20 @@ def main():
     try:
         args = parse_args()
         
+        # Validate arguments
+        if not args.library_name and not args.input_path:
+            logger.error("Either library_name or --input_path must be provided")
+            sys.exit(1)
+        
+        # If library_name is not provided but input_path is, extract library name from path
+        library_name = args.library_name
+        if not library_name and args.input_path:
+            library_name = _extract_library_name_from_path(args.input_path)
+            logger.info(f"Extracted library name from path: {library_name}")
+        
         # Appelle la fonction make() avec les arguments parsés
         result = make(
-            library_name=args.library_name,
+            library_name=library_name,
             output_path=args.output,
             input_path=args.input_path,
             extension=args.extension,
@@ -241,7 +270,8 @@ def make(library_name, output_path=None, input_path=None, extension='txt', rough
     """
     Convert a library's documentation to text or markdown format (programmatic API).
     Args:
-        library_name (str): Name of the library to convert (e.g., "pixell", "numpy").
+        library_name (str, optional): Name of the library to convert (e.g., "pixell", "numpy"). 
+                                    If None and input_path is provided, will be extracted from the path.
         output_path (str, optional): Output directory or file path. Defaults to ~/your_context_library/.
         input_path (str, optional): Manual path to library (overrides automatic search).
         extension (str, optional): Output file extension: 'txt' (default) or 'md'.
@@ -250,6 +280,15 @@ def make(library_name, output_path=None, input_path=None, extension='txt', rough
         str: Path to the generated documentation file, or None if failed.
     """
     try:
+        # If library_name is None but input_path is provided, extract library name from path
+        if not library_name and input_path:
+            library_name = _extract_library_name_from_path(input_path)
+            logger.info(f"Extracted library name from path: {library_name}")
+        
+        # Validate that we have either library_name or input_path
+        if not library_name and not input_path:
+            logger.error("Either library_name or input_path must be provided")
+            return None
         # ÉTAPE 1: Installation automatique des dépendances
         logger.info("Installing dependencies automatically...")
         dependency_installer.install_all_missing_dependencies()
